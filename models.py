@@ -35,8 +35,9 @@ def get_truncated_normal(mean=0, sd=1, low=0, upp=10):
 
 def simulate(i, k):
     model = ScaleFreeModel(144, 2)
-    print("process: ", os.getpid())
-    return model.runSim(k)
+    res = model.runSim(k)
+    #q.put(res)
+    return res
 
 class Agent:
     def __init__(self, state):
