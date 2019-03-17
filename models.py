@@ -12,18 +12,23 @@ import imageio
 import networkx as nx
 from scipy.stats import truncnorm
 import os
+from functools import reduce
 
 #Constants and Variables
 
 states = [1, -1] #1 being cooperating, -1 being defecting
-
 defectorUtility = -0.20 
- 
 politicalClimate=0.2 
-
 selfWeight = 0.8
+s = 100
+k=3000
+continuous = True
 
-neighboursWeight = 0.5
+args = {"defectorUtility" : defectorUtility, 
+        "politicalClimate" : politicalClimate, 
+        "selfWeight": selfWeight, 
+        "s": s, "k" : k, "continuous" : continuous}
+
 
 #Helper
 def decision(probability):
@@ -33,10 +38,9 @@ def get_truncated_normal(mean=0, sd=1, low=0, upp=10):
     return truncnorm(
         (low - mean) / sd, (upp - mean) / sd, loc=mean, scale=sd)
 
-def simulate(i, k):
-    model = ScaleFreeModel(144, 2)
-    res = model.runSim(k)
-    #q.put(res)
+def simulate(i, args):
+    model = GridModel(12)
+    res = model.runSim(k, groupInteract=True)
     return res
 
 class Agent:
@@ -45,17 +49,23 @@ class Agent:
         self.interactionsReceived = 0
         self.interactionsGiven = 0
     
-    def consider(self, neighbour, neighboursWeight):
+    def consider(self, neighbour, neighboursWeight, continuous = False):
         self.interactionsReceived +=1
         neighbour.addInteractionGiven()
         weight = self.state*selfWeight + politicalClimate + defectorUtility + neighboursWeight*neighbour.state + random.uniform(-0.25, 0.25)
         
-        #self.state = weight
-        if(weight > 0):
-            self.state = states[0]
+        if(continuous):
+            self.state = weight
+            if(weight > 1):
+                  self.state = states[0]
+            elif(weight <-1):
+                self.state = states[1] 
         else:
-            self.state = states[1]  
-    
+            if(weight > 0):
+                self.state = states[0]
+            else:
+                self.state = states[1]  
+
     def addInteractionGiven(self):
         self.interactionsGiven +=1
         
@@ -63,7 +73,7 @@ class Agent:
         return
         
         
-    def groupConsiderA(self, neighbour, neighboursWeight, neighbourList):
+    def groupConsiderA(self, neighbour, neighboursWeight, neighbourList, continuous=False):
         nbNeighbours = len(neighbourList)
         nbCoop = 0
         for n in  neighbourList:
@@ -74,14 +84,35 @@ class Agent:
         if(neighbour.state <= 0):
             p=1-p
         
+        weight = self.state*selfWeight + politicalClimate + defectorUtility + p*neighboursWeight*neighbour.state #+ random.uniform(-0.25, 0.25)
         
-        weight = self.state*selfWeight + politicalClimate + defectorUtility + p*neighboursWeight*neighbour.state + random.uniform(-0.25, 0.25)
-        
-        #self.state = weight
-        if(weight > 0):
-            self.state = states[0]
+        if(continuous):
+            self.state = weight
+            if(weight > 1):
+                  self.state = states[0]
+            elif(weight <-1):
+                self.state = states[1] 
         else:
-            self.state = states[1]  
+            if(weight > 0):
+                self.state = states[0]
+            else:
+                self.state = states[1]  
+     
+    def groupConsiderB(self, impact, continuous = False):
+        print("impact: ", impact, "state: ", self.state)
+        weight = self.state*selfWeight + politicalClimate + defectorUtility + impact #+ random.uniform(-0.25, 0.25)
+        if(continuous):
+            self.state = weight
+            if(weight > 1):
+                  self.state = states[0]
+            elif(weight <-1):
+                self.state = states[1]  
+        else:
+            if(weight >= 0):
+                self.state = states[0]
+            else:
+                self.state = states[1] 
+        print("new state: ", self.state, "\n")
     
     
     def setState(self, newState):
@@ -114,7 +145,7 @@ class Model:
         
         weight = self.graph[nodeIndex][chosenNeighbourIndex]['weight']
         
-        node.consider(chosenNeighbour, weight)
+        node.consider(chosenNeighbour, weight, continuous= True)
         
     def groupInteract(self):
         nodeIndex = random.randint(0, len(self.graph) - 1)
@@ -131,6 +162,25 @@ class Model:
         
         neighbourList = [self.graph.nodes[i] for i in neighbours]
         node.groupConsiderA(chosenNeighbour, weight, neighbourList)
+        
+    def groupInteractB(self):
+        nodeIndex = random.randint(0, len(self.graph) - 1)
+        node = self.graph.nodes[nodeIndex]['agent']
+        print("Node: ", nodeIndex)
+        neighbours =  list(self.graph.adj[nodeIndex].keys())
+        print(neighbours)
+        if(len(neighbours) == 0):
+            return
+        
+        impact = 0
+        for n in neighbours:
+            neighbour = self.graph.nodes[n]['agent']
+            weight = self.graph[nodeIndex][n]['weight']
+            impact += neighbour.state * weight
+        
+        impact = impact/len(neighbours)
+        
+        node.groupConsiderB(impact)
         
     def getAvgNumberOfDefectorNeigh(self):
         defectorFriendsList = []
@@ -164,7 +214,8 @@ class Model:
         
         if(drawModel):
             draw_model(self)
-            filenames = []
+        
+        filenames = []
         
         if(countNeighbours):
             (defectorDefectingNeighs,
@@ -175,7 +226,7 @@ class Model:
             print("Cooperators: avg: ", cooperatorDefectingFriends, " std: ", cooperatorDefectingFriendsSTD)
     
         for i in range(k):
-            if(groupInteract): self.groupInteract()
+            if(groupInteract): self.groupInteractB()
             else:
                 self.interact()
             ratio = self.countCooperatorRatio()
@@ -191,7 +242,7 @@ class Model:
                 self.cooperatorDefectingNeighsList.append(cooperatorDefectingNeighs)
                 self.defectorDefectingNeighsSTDList.append(defectorDefectingNeighsSTD)
                 self.cooperatorDefectingNeighsSTDList.append(cooperatorDefectingNeighsSTD)
-            if(drawModel and (gifname != None) and (i % 10 == 0)):
+            if(gifname != None and (i % 10 == 0)):
                 draw_model(self, True, i)
                 filenames.append("plot" + str(i) +".png")
                 
@@ -202,11 +253,11 @@ class Model:
                     #b = random.randint(0,n)
                     #weight = random.uniform(0.1, 0.9)
                     #model.graph.add_edge(a, b, weight = weight)
-        if(drawModel and (gifname != None)):
+        if(gifname != None):
             images = []
             for filename in filenames:
                 images.append(imageio.imread(filename))
-            imageio.mimsave("network" +gifname+ ".gif", images, duration=0.04167)
+            imageio.mimsave("network" +gifname+ ".gif", images, duration=0.08167)
        
     
         if(countNeighbours):
@@ -223,14 +274,15 @@ class GridModel(Model):
         super().__init__()
         for i in range(n):
             for j in range (n):
-                weight=random.uniform(0.1, 0.9)
+                #weight=random.uniform(0.1, 0.9)
+                weight = 1
                 agent1 = Agent(states[random.randint(0,1)])
                 self.graph.add_node(i*n+j, agent=agent1, pos=(i, j))
                 self.pos.append((i, j))
                 if(i!=0):
-                    model.graph.add_edge(i*n+j, (i-1)*n+j, weight = weight)
+                    self.graph.add_edge(i*n+j, (i-1)*n+j, weight = weight)
                 if(j!=0):
-                    model.graph.add_edge(i*n+j, i*n+j-1, weight = weight)
+                    self.graph.add_edge(i*n+j, i*n+j-1, weight = weight)
     
 
 class ScaleFreeModel(Model):
@@ -244,7 +296,8 @@ class ScaleFreeModel(Model):
         edges = self.graph.edges() 
         for e in edges: 
             #weight=random.uniform(0.1, 0.9)
-            weight=X.rvs(1)
+            #weight=X.rvs(1)
+            weight=1
             self.graph[e[0]][e[1]]['weight'] = weight 
         self.pos = nx.kamada_kawai_layout(self.graph)
         
@@ -269,8 +322,68 @@ class RandomModel(Model):
     #rescale_layout(pos[, scale])	Return scaled position array to (-scale, scale) in all axes.
     ##shell_layout(G[, nlist, scale, center, dim])	Position nodes in concentric circles.
     #spring_layout(G[, k, pos, fixed, …])	Position nodes using Fruchterman-Reingold force-directed algorithm.
-    #spectral_layout(G[, weight, scale, center, dim])	Position nodes using the eigenvectors of the graph Laplacian. 
+    #spectral_layout(G[, weight, scale, center, dim])	Position nodes using the eigenvectors of the graph Laplacian.
+    
+class NewmanModel(Model):
+    def __init__(self, n):
+        super().__init__()
+        for i in range (n):
+            agent1 = Agent(states[random.randint(0,1)])
+            self.graph.add_node(i, agent=agent1)
+        z = 5
+        r0 = 0.0005
+        r1= 2
+        np = n*(n-1)/2
+        timesteps = 100
+        for t in range(timesteps):
+            degrees = [e[1] for e in list(nx.degree(self.graph))]
+            degrees.insert(0,0)
+            nm = reduce(lambda x, y: x+y*(y-1), degrees)/2
+            print("degrees: ", degrees)
+            for p in range(round(np*r0)):
+                print(p)
+                i = random.randint(0, len(self.graph) - 1)
+                j =  random.randint(0, len(self.graph) - 1)
+                while(i == j):
+                    j = random.randint(0, len(self.graph) - 1)
+                neighboursi =  degrees[i+1]
+                neighboursj =  degrees[j+1]
+                if(neighboursi >= z or neighboursj >= z ):
+                    print("already enough firends")
+                    continue
+                if(self.graph.has_edge(i, j)):
+                    print("already friends")
+                    continue
+                self.graph.add_edge(i, j, weight = 1)
+                
+            prob = list(map(lambda x: x*(x-1), degrees[1:-1]))
+            #probs = np.array(prob)/sum(prob)
+            test = []
+            for i in range(len(prob)):
+                if(prob[i] > 0):
+                    for j in range(1, prob[i]):
+                        test.append(i) 
+            for p in range(round(nm*r1)):
+                node = random.choice(test)
+                
+                neighbours =  list(self.graph.adj[int(node)].keys())
+                i = random.randint(0, len(neighbours) - 1)
+                j =  random.randint(0, len(neighbours) - 1)
+                while(i == j):
+                    j = random.randint(0, len(self.graph) - 1)
+                neighboursi =  degrees[i+1]
+                neighboursj =  degrees[j+1]
+                if(neighboursi >= z or neighboursj >= z ):
+                    print("already enough firends")
+                    continue
+                if(not self.graph.has_edge(i, j)):
+                    self.graph.add_edge(i, j, weight = 1)
+        self.pos = nx.kamada_kawai_layout(self.graph)
 
+
+            
+            
+    
 def makeRandomModel(n, m, algorithm="ba"):
     model = Model()
     X = get_truncated_normal(0.5, 0.15, 0, 1)
@@ -301,3 +414,32 @@ def makeRandomModel(n, m, algorithm="ba"):
     model.pos = pos
     
     return model
+
+import matplotlib.pyplot as plt
+from IPython.display import Image
+
+
+def draw_model(model, save=False, filenumber = None):
+    
+    #plt.figure(figsize=(16,16))
+
+    color_map = []
+    intensities = []
+    #pos = []
+    for node in model.graph:
+        #pos.append(model.graph.nodes[node]['pos'])
+        if model.graph.nodes[node]['agent'].state > 0:
+            color_map.append((3/255,164/255,94/255, model.graph.nodes[node]['agent'].state))
+            intensities.append(model.graph.nodes[node]['agent'].state)
+            #color_map.append('#03a45e')
+        #else: color_map.append('#f7796d')
+        else: 
+            color_map.append((247/255,121/255,109/255, -1*model.graph.nodes[node]['agent'].state ))
+            intensities.append(model.graph.nodes[node]['agent'].state)
+    degrees = nx.degree(model.graph)
+    plt.subplot(121)
+    nx.draw(model.graph, model.pos, node_size=[d[1] * 30 for d in degrees], node_color =intensities, cmap = plt.cm.RdYlGn, vmin=-1, vmax=1 )
+    if(save):
+        plt.title(filenumber)
+        plt.savefig("plot" + str(filenumber) +".png", bbox_inches="tight")
+        plt.close()

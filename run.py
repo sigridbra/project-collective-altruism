@@ -1,5 +1,6 @@
 from multiprocessing import Pool
 import models 
+from functools import reduce
 import numpy as np
 from operator import itemgetter
 import heapq
@@ -17,50 +18,15 @@ from itertools import repeat
 import time
 import multiprocessing
 import os
-from threading import Thread
-#from model import Agent
 
 #Constants and Variables
 
-states = [1, -1] #1 being cooperating, -1 being defecting
 
-defectorUtility = -0.20 
- 
-politicalClimate=0.2 
 
-selfWeight = 0.8
-
-neighboursWeight = 0.5
-
-s = 100
-
-#Helper
-def decision(probability):
-    return random.random() < probability
-
-def get_truncated_normal(mean=0, sd=1, low=0, upp=10):
-    return truncnorm(
-        (low - mean) / sd, (upp - mean) / sd, loc=mean, scale=sd)
-
-if __name__ ==  '__main__': 
-    num_processors = 8
-    modelList=[]
-    start = time.time()
-    p=Pool(processes = num_processors)
-    #startMake = time.time()
-    #for i in range(s):
-    #    modelList.append(models.ScaleFreeModel(144, 2))  
-    #endMake=time.time()
-    output = p.starmap(models.simulate, zip(range(s), repeat(3000)))
-    #output = list(map(models.simulate, range(s), repeat(3000)))
-
-    end = time.time()
-    
-    #print(f'Time to make models: {endMake - startMake:.2f}s\n')
-    print(f'Time to complete: {end - start:.2f}s\n')
-    plt.xlabel("timesteps")
-    plt.ylabel("fraction of cooperators")
-    plt.ylim((0, 1))
-    for i in range(s):
-        plt.plot(output[i])
+model = models.NewmanModel(144)
+#res = model.runSim(3000, gifname="scaleFreecontinu3")
+models.draw_model(model, save=True, filenumber = "Newmann")
+print(nx.average_clustering(model.graph))
+#plt.plot(res)
+#plt.show()
     
