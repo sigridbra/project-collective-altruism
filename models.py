@@ -22,7 +22,7 @@ politicalClimate=0.2
 selfWeight = 0.8
 s = 100
 k=3000
-continuous = True
+continuous = False
 
 args = {"defectorUtility" : defectorUtility, 
         "politicalClimate" : politicalClimate, 
@@ -39,9 +39,9 @@ def get_truncated_normal(mean=0, sd=1, low=0, upp=10):
         (low - mean) / sd, (upp - mean) / sd, loc=mean, scale=sd)
 
 def simulate(i, args):
-    model = GridModel(12)
-    res = model.runSim(k, groupInteract=True)
-    return res
+    model = ClusteredPowerlawModel(144,2)
+    res = model.runSim(k)
+    return model
 
 class Agent:
     def __init__(self, state):
@@ -49,7 +49,7 @@ class Agent:
         self.interactionsReceived = 0
         self.interactionsGiven = 0
     
-    def consider(self, neighbour, neighboursWeight, continuous = False):
+    def consider(self, neighbour, neighboursWeight):
         self.interactionsReceived +=1
         neighbour.addInteractionGiven()
         weight = self.state*selfWeight + politicalClimate + defectorUtility + neighboursWeight*neighbour.state + random.uniform(-0.25, 0.25)
@@ -145,7 +145,7 @@ class Model:
         
         weight = self.graph[nodeIndex][chosenNeighbourIndex]['weight']
         
-        node.consider(chosenNeighbour, weight, continuous= True)
+        node.consider(chosenNeighbour, weight)
         
     def groupInteract(self):
         nodeIndex = random.randint(0, len(self.graph) - 1)
@@ -300,6 +300,22 @@ class ScaleFreeModel(Model):
             weight=1
             self.graph[e[0]][e[1]]['weight'] = weight 
         self.pos = nx.kamada_kawai_layout(self.graph)
+
+class ClusteredPowerlawModel(Model):
+    def __init__(self, n, m):
+        super().__init__()
+        X = get_truncated_normal(0.5, 0.15, 0, 1)
+        self.graph = nx.powerlaw_cluster_graph(n, m, 0.5)
+        for n in range (n):
+                agent1 = Agent(states[random.randint(0,1)])
+                self.graph.nodes[n]['agent'] = agent1
+        edges = self.graph.edges() 
+        for e in edges: 
+            weight=random.uniform(0.1, 0.9)
+            #weight=X.rvs(1)
+            #weight=0.5
+            self.graph[e[0]][e[1]]['weight'] = weight 
+        self.pos = nx.kamada_kawai_layout(self.graph)
         
 class RandomModel(Model):
     def __init__(self, n, m):
@@ -439,7 +455,127 @@ def draw_model(model, save=False, filenumber = None):
     degrees = nx.degree(model.graph)
     plt.subplot(121)
     nx.draw(model.graph, model.pos, node_size=[d[1] * 30 for d in degrees], node_color =intensities, cmap = plt.cm.RdYlGn, vmin=-1, vmax=1 )
+    #plt.colorbar(mcp)
+    plt.show()
     if(save):
         plt.title(filenumber)
         plt.savefig("plot" + str(filenumber) +".png", bbox_inches="tight")
         plt.close()
+
+def radialDist(model, depth, isBefore):
+    DefectorValues = [[0 for i in range(depth)] for j in range(len(model.graph))]
+    CooperatorValues = [[0 for i in range(depth)] for j in range(len(model.graph))]
+    
+    for nodeIdx in model.graph:
+        neighbours = list(model.graph.adj[nodeIdx])
+        isCooperator = model.graph.nodes[nodeIdx]['agent'].state > 0
+        parent = [nodeIdx]
+        for d in range(depth):
+            nextLevelNeighs = set([])
+            for n in neighbours:
+                nextLevelNeighs.update(list(model.graph.adj[n]))
+                if(model.graph.nodes[n]['agent'].state > 0 and isCooperator):
+                    CooperatorValues[nodeIdx][d] += 1
+                elif(model.graph.nodes[n]['agent'].state <= 0 and not isCooperator): 
+                    DefectorValues[nodeIdx][d] += 1
+            CooperatorValues[nodeIdx][d] = CooperatorValues[nodeIdx][d]/len(neighbours)
+            DefectorValues[nodeIdx][d] = DefectorValues[nodeIdx][d]/len(neighbours)
+            
+            #make sure the parent level isn't checked again
+            for n in parent:
+                nextLevelNeighs.discard(n) 
+            parent = neighbours
+            neighbours = nextLevelNeighs
+     
+    cooperatorRatio = model.countCooperatorRatio()
+    
+    cooperatorRes = []
+    defectorRes = []
+    for col in range(depth):
+        coopSumRatios = 0
+        defectSumRatios = 0
+        for row in range(len(CooperatorValues)):
+            coopSumRatios += CooperatorValues[row][col]
+            defectSumRatios += DefectorValues[row][col]
+        cooperatorRes.append(np.array(coopSumRatios)/(len(model.graph)*cooperatorRatio*cooperatorRatio))
+        defectorRes.append(np.array(defectSumRatios)/(len(model.graph)*(1-cooperatorRatio)*(1-cooperatorRatio)))
+
+    if isBefore:
+        intensity = 0.5
+    else:
+        intensity = 1
+    plt.xlabel("Distance from the nodes")
+    plt.ylabel("Normalised ratio of agreein neighbours")
+    plt.title("Distance distribution function")
+    plt.ylim((0, 2.5))
+    plt.plot(range(1, len(cooperatorRes)+1), cooperatorRes, color=((23/255, 104/255, 37/255, intensity)))     
+    plt.plot(range(1, len(cooperatorRes)+1), defectorRes, color=((109/255, 10/255, 10/255, intensity))) 
+
+def avgRadialDist(models, depth, isBefore):
+    DefectorList = []
+    CooperatorList = []
+    
+    for model in models :
+        DefectorValues = [[0 for i in range(depth)] for j in range(len(model.graph))]
+        CooperatorValues = [[0 for i in range(depth)] for j in range(len(model.graph))]
+
+        for nodeIdx in model.graph:
+            neighbours = list(model.graph.adj[nodeIdx])
+            isCooperator = model.graph.nodes[nodeIdx]['agent'].state > 0
+            parent = [nodeIdx]
+            for d in range(depth):
+                nextLevelNeighs = set([])
+                for n in neighbours:
+                    nextLevelNeighs.update(list(model.graph.adj[n]))
+                    if(model.graph.nodes[n]['agent'].state > 0 and isCooperator):
+                        CooperatorValues[nodeIdx][d] += 1
+                    elif(model.graph.nodes[n]['agent'].state <= 0 and not isCooperator): 
+                        DefectorValues[nodeIdx][d] += 1
+                if(len(neighbours) == 0):
+                    break
+                CooperatorValues[nodeIdx][d] = CooperatorValues[nodeIdx][d]/len(neighbours)
+                DefectorValues[nodeIdx][d] = DefectorValues[nodeIdx][d]/len(neighbours)
+
+                #make sure the parent level isn't checked again
+                for n in parent:
+                    nextLevelNeighs.discard(n) 
+                parent = neighbours
+                neighbours = nextLevelNeighs
+
+        cooperatorRatio = model.countCooperatorRatio()
+
+        cooperatorRes = []
+        defectorRes = []
+        for col in range(depth):
+            coopSumRatios = 0
+            defectSumRatios = 0
+            for row in range(len(CooperatorValues)):
+                coopSumRatios += CooperatorValues[row][col]
+                defectSumRatios += DefectorValues[row][col]
+            if(cooperatorRatio == 0):
+                cooperatorRes.append(1)
+            else:
+                cooperatorRes.append(np.array(coopSumRatios)/(len(model.graph)*cooperatorRatio*cooperatorRatio))
+            if(cooperatorRatio == 1):
+                defectorRes.append(1)
+            else:
+                defectorRes.append(np.array(defectSumRatios)/(len(model.graph)*(1-cooperatorRatio)*(1-cooperatorRatio)))
+        DefectorList.append( defectorRes)
+        CooperatorList.append( cooperatorRes)
+    data = np.array(DefectorList)
+    avgDefector = np.average(data, axis=0)
+    data = np.array(CooperatorList)
+    avgCooperator = np.average(data, axis=0)
+            
+    if isBefore:
+        intensity = 0.5
+    else:
+        intensity = 1
+    plt.xlabel("Distance from the nodes")
+    plt.ylabel("Normalised ratio of agreein neighbours")
+    plt.title("Distance distribution function")
+    plt.ylim((0, 2.5))
+    plt.xlim((0.5, 5.5))
+    plt.plot(range(1, len(avgDefector)+1), avgCooperator, color=((23/255, 104/255, 37/255, intensity)))     
+    plt.plot(range(1, len(avgDefector)+1), avgDefector, color=((109/255, 10/255, 10/255, intensity))) 
+    plt.show()

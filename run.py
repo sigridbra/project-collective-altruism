@@ -21,12 +21,23 @@ import os
 
 #Constants and Variables
 
+s = 100
 
+if __name__ ==  '__main__': 
+    num_processors = 8
+    start = time.time()
+    p=Pool( processes = num_processors)
+    mods = p.starmap(models.simulate, zip(range(s), repeat("args")))
+    #output = list(map(models.simulate, range(s), repeat(3000)))
 
-model = models.NewmanModel(144)
-#res = model.runSim(3000, gifname="scaleFreecontinu3")
-models.draw_model(model, save=True, filenumber = "Newmann")
-print(nx.average_clustering(model.graph))
-#plt.plot(res)
-#plt.show()
+    end = time.time()
+    print(f'Time to complete: {end - start:.2f}s\n')
+    plt.xlabel("timesteps")
+    plt.ylabel("fraction of cooperators")
+    plt.ylim((0, 1))
+    #print(output)
+    #for i in range(s):
+    #    plt.plot(mods[i].ratio)
+    models.avgRadialDist(mods, 6, False)
+    plt.show()
     
