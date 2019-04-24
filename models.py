@@ -10,38 +10,79 @@ import seaborn as sns
 from statistics import stdev, mean
 import imageio
 import networkx as nx
+from networkx.algorithms import community
 from scipy.stats import truncnorm
 import os
 from functools import reduce
-
-#Constants and Variables
-
-states = [1, -1] #1 being cooperating, -1 being defecting
-defectorUtility = -0.20 
-politicalClimate=0.2 
-selfWeight = 0.8
-s = 100
-k=3000
-continuous = False
-
-args = {"defectorUtility" : defectorUtility, 
-        "politicalClimate" : politicalClimate, 
-        "selfWeight": selfWeight, 
-        "s": s, "k" : k, "continuous" : continuous}
-
-
-#Helper
-def decision(probability):
-    return random.random() < probability
 
 def get_truncated_normal(mean=0, sd=1, low=0, upp=10):
     return truncnorm(
         (low - mean) / sd, (upp - mean) / sd, loc=mean, scale=sd)
 
-def simulate(i, args):
-    model = ClusteredPowerlawModel(144,2)
+#Constants and Variables
+
+states = [1, -1] #1 being cooperating, -1 being defecting
+defectorUtility = -0.20 
+politicalClimate=0.20 
+selfWeight = 0.4
+d = 2
+s = 100
+k=3000 #10^6
+continuous = False
+X = get_truncated_normal(0.5, 0.25, 0, 1)
+
+
+args = {"defectorUtility" : defectorUtility, 
+        "politicalClimate" : politicalClimate, 
+        "selfWeight": selfWeight, "d":d, 
+        "s": s, "k" : k, "continuous" : continuous, "type" : "cl"}
+
+def simulate(i, newArgs):
+    setArgs(newArgs)
+    global args
+    
+    if(args["type"] == "cl"):
+        model =ClusteredPowerlawModel(144, args["d"])
+    elif(args["type"] == "sf"):
+        model = ScaleFreeModel(144, args["d"])
+    elif(args["type"] == "grid"):
+        model = GridModel(12)
+    elif(args["type"] == "rand"):
+        model = RandomModel(144, args["d"])
+    else:
+        model = RandomModel(144, args["d"])
+    
     res = model.runSim(k)
     return model
+
+
+#Helper
+def setArgs(newArgs):
+    global args
+    for arg, value in newArgs.items():
+        args[arg] = value
+
+def getFriendshipWeight():
+    #weigth = random.uniform(0.1, 0.9)
+    global X
+    weigth = X.rvs(1)
+    return weigth
+
+def getInitialState():
+    #state = states[random.randint(0,1)]
+    state = random.uniform(-1, 1)
+    #state= getRandomExpo()
+    return state
+
+def decision(probability):
+    return random.random() < probability
+
+
+def getRandomExpo():
+    x = np.random.exponential(scale=0.6667)-1
+    if(x>1): return 1
+    elif (x< -1): return -1
+    return x
 
 class Agent:
     def __init__(self, state):
@@ -52,16 +93,26 @@ class Agent:
     def consider(self, neighbour, neighboursWeight):
         self.interactionsReceived +=1
         neighbour.addInteractionGiven()
-        weight = self.state*selfWeight + politicalClimate + defectorUtility + neighboursWeight*neighbour.state + random.uniform(-0.25, 0.25)
-        
+        weight = self.state*selfWeight + politicalClimate + defectorUtility + neighboursWeight*neighbour.state #+ random.uniform(-0.25, 0.25)
+        #weight =  politicalClimate + defectorUtility + neighboursWeight*neighbour.state #+ random.uniform(-0.25, 0.25)
+        #print("neighbours weight: ", neighboursWeight, " neighbours state: ", neighbour.state, " weight: ", weight)
         if(continuous):
-            self.state = weight
-            if(weight > 1):
+            #self.state = weight
+            p1 = (0.25+weight)*2
+            if(p1 <0): p1 = 0
+            if(p1 > 1): p1=1
+         #   print("Self.state: ",self.state, " p1: ", p1)
+            delta = 1/2*(-self.state+1)*(p1) - (1/2*(self.state+1))*(1-p1)
+          #  print("delta: ", delta)
+            self.state += 2*delta
+            #Truncate values    
+            if(self.state > 1):
                   self.state = states[0]
-            elif(weight <-1):
-                self.state = states[1] 
+            elif(self.state <-1):
+                self.state = states[1]
+                 
         else:
-            if(weight > 0):
+            if(weight + random.uniform(-0.25, 0.25)  > 0):
                 self.state = states[0]
             else:
                 self.state = states[1]  
@@ -126,6 +177,7 @@ class Model:
     def __init__(self):
         self.graph = nx.Graph()
         self.ratio = []
+        self.states = []
         self.defectorDefectingNeighsList = []
         self.cooperatorDefectingNeighsList = []
         self.defectorDefectingNeighsSTDList = []
@@ -209,6 +261,12 @@ class Model:
             if self.graph.nodes[node]['agent'].state > 0:
                 count+=1
         return count/len(self.graph)
+
+    def getAvgState(self):
+        state = 0
+        for node in self.graph:
+            state += self.graph.nodes[node]['agent'].state
+        return state/len(self.graph)
  
     def runSim(self, k, groupInteract=False, drawModel = False, countNeighbours = False, gifname=None):
         
@@ -231,6 +289,8 @@ class Model:
                 self.interact()
             ratio = self.countCooperatorRatio()
             self.ratio.append(ratio)
+            state = self.getAvgState()
+            self.states.append(state)
             #self.politicalClimate += (ratio-0.5)*0.001 #change the political climate depending on the ratio of cooperators
             
             if(countNeighbours):
@@ -274,9 +334,9 @@ class GridModel(Model):
         super().__init__()
         for i in range(n):
             for j in range (n):
-                #weight=random.uniform(0.1, 0.9)
-                weight = 1
-                agent1 = Agent(states[random.randint(0,1)])
+                
+                weight = getFriendshipWeight()
+                agent1 = Agent(getInitialState())
                 self.graph.add_node(i*n+j, agent=agent1, pos=(i, j))
                 self.pos.append((i, j))
                 if(i!=0):
@@ -288,47 +348,46 @@ class GridModel(Model):
 class ScaleFreeModel(Model):
     def __init__(self, n, m):
         super().__init__()
-        X = get_truncated_normal(0.5, 0.15, 0, 1)
+        
         self.graph = nx.barabasi_albert_graph(n, m)
         for n in range (n):
-                agent1 = Agent(states[random.randint(0,1)])
+                agent1 = Agent(getInitialState())
                 self.graph.nodes[n]['agent'] = agent1
         edges = self.graph.edges() 
         for e in edges: 
-            #weight=random.uniform(0.1, 0.9)
-            #weight=X.rvs(1)
-            weight=1
+            
+            weight = getFriendshipWeight()
             self.graph[e[0]][e[1]]['weight'] = weight 
         self.pos = nx.kamada_kawai_layout(self.graph)
 
 class ClusteredPowerlawModel(Model):
     def __init__(self, n, m):
         super().__init__()
-        X = get_truncated_normal(0.5, 0.15, 0, 1)
+        
         self.graph = nx.powerlaw_cluster_graph(n, m, 0.5)
         for n in range (n):
-                agent1 = Agent(states[random.randint(0,1)])
+                agent1 = Agent(getInitialState())
                 self.graph.nodes[n]['agent'] = agent1
         edges = self.graph.edges() 
         for e in edges: 
-            weight=random.uniform(0.1, 0.9)
-            #weight=X.rvs(1)
-            #weight=0.5
+            weight=getFriendshipWeight()
             self.graph[e[0]][e[1]]['weight'] = weight 
         self.pos = nx.kamada_kawai_layout(self.graph)
         
 class RandomModel(Model):
     def __init__(self, n, m):
+        #m is avg degree/2
         super().__init__()
-        X = get_truncated_normal(0.5, 0.15, 0, 1)
-        self.graph =nx.erdos_renyi_graph(n, 0.027972)
+        p = 2*m/(n-1)
+        
+        self.graph =nx.erdos_renyi_graph(n, p)
         for n in range (n):
-                agent1 = Agent(states[random.randint(0,1)])
+                agent1 = Agent(getInitialState())
                 self.graph.nodes[n]['agent'] = agent1
         edges = self.graph.edges() 
         for e in edges: 
-            #weight=random.uniform(0.1, 0.9)
-            weight=X.rvs(1)
+            weight=getFriendshipWeight()
+            
             self.graph[e[0]][e[1]]['weight'] = weight 
         self.pos = nx.kamada_kawai_layout(self.graph)
     # bipartite_layout(G, nodes[, align, scale, …])	Position nodes in two straight lines.
@@ -456,11 +515,11 @@ def draw_model(model, save=False, filenumber = None):
     plt.subplot(121)
     nx.draw(model.graph, model.pos, node_size=[d[1] * 30 for d in degrees], node_color =intensities, cmap = plt.cm.RdYlGn, vmin=-1, vmax=1 )
     #plt.colorbar(mcp)
-    plt.show()
+    #plt.show()
     if(save):
         plt.title(filenumber)
         plt.savefig("plot" + str(filenumber) +".png", bbox_inches="tight")
-        plt.close()
+        plt.close('all')
 
 def radialDist(model, depth, isBefore):
     DefectorValues = [[0 for i in range(depth)] for j in range(len(model.graph))]
@@ -578,4 +637,39 @@ def avgRadialDist(models, depth, isBefore):
     plt.xlim((0.5, 5.5))
     plt.plot(range(1, len(avgDefector)+1), avgCooperator, color=((23/255, 104/255, 37/255, intensity)))     
     plt.plot(range(1, len(avgDefector)+1), avgDefector, color=((109/255, 10/255, 10/255, intensity))) 
+    plt.show()
+
+def drawAvgState(models, avg =False, pltNr=1, title=""):
+    plt.xlabel("timesteps")
+    plt.ylabel("fraction of cooperators")
+    
+    plt.subplot(2, 2, pltNr, title=title)
+    if(not avg):
+        plt.ylim((0, 1))
+        for i in range(len(models)):
+            plt.plot(models[i].ratio)
+    else:
+        states = []
+        plt.ylim((-1, 1))
+        for i in range(len(models)):
+            states.append(models[i].states)
+        array = np.array(states)
+        avg = array.mean(axis=0)
+        std = array.std(axis=0)
+        plt.plot(avg, color="r")
+        plt.plot(avg-std, color="#ffa500")
+        plt.plot(avg+std, color="#ffa500")
+    
+
+def drawCrossSection(models):
+    values = []
+    for model in models:
+        values.append(model.states[-1])
+    plt.ylim((0, 2))
+    plt.xlim((-1, 1))
+    plt.title('Density Plot of state for simulations')
+    plt.xlabel('avg state of cooperators after all time steps')
+    plt.ylabel('Density')
+    sns.distplot(values, hist=False, kde=True, 
+              color = 'blue')
     plt.show()

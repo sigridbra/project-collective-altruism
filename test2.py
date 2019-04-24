@@ -49,9 +49,9 @@ if __name__ ==  '__main__':
     models.drawAvgState(sim4, avg=True, pltNr=4, title="cl disc" )
     plt.draw()
     plt.show()
-    fn = Path('~/Documents/Prosjek/Master/Comp/randw-sw0.6.svg').expanduser()
+    #fn = Path('~/Documents/Prosjek/Master/Comp/randw-sw0.6.svg').expanduser()
 
-    plt.savefig(fn, bbox_inches='tight')
+    #plt.savefig(fn, bbox_inches='tight')
     """plt.xlabel("timesteps")
     plt.ylabel("fraction of cooperators")
     plt.ylim((0, 1))
