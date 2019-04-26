@@ -38,12 +38,32 @@ if __name__ ==  '__main__':
     args4 = {"continuous": False, "type" : "cl",  "d": 25}
     #sim4 = p.starmap(models.simulate, zip(range(s), repeat(args4)))
     #output = list(map(models.simulate, range(s), repeat(3000)))
-    sim1 = p.starmap(models.simulate, zip(range(1), repeat(args1)))
-    #community_gen = community.label_propagation_communities(sim1[0].graph)
+    sim1 = p.starmap(models.simulate, zip(range(1), repeat(args2)))
+    #G = nx.barbell_graph(5, 1)
+    #community_gen = community.girvan_newman(sim1[0].graph)
     partition = community.best_partition(sim1[0].graph)
     #top_lvl = next(community_gen)
     #next_lvl = next(community_gen)
-    print(sorted(map(sorted, partition)))
+    #print(sorted(map(sorted, next_lvl)))
+    #part = community.label_propagation_communities(sim1[0].graph)
+    #for el in part:print(el)
+    print(partition)
+    
+    print("Number of Communities: ", len(set(partition.values())))
+    for k, v in partition.items():
+        sim1[0].graph.node[k]["louvain-val"] = v
+    mypalette = ["blue","red","green", "yellow", "orange", "violet", "grey", "grey","grey"]
+    colors = [mypalette[sim1[0].graph.node[node]["louvain-val"] %7 ]  for node in sim1[0].graph.nodes()]
+    
+    plt.figure(figsize=(10,10))
+    plt.axis('off')
+    pos = nx.kamada_kawai_layout(sim1[0].graph, scale=3)
+    nx.draw_networkx_nodes(sim1[0].graph, pos, node_color=colors, node_size=20, label=True)
+    nx.draw_networkx_edges(sim1[0].graph, pos, alpha=0.4)
+    
+    #top_level_communities = next(communities_generator)
+    #next_level_communities = next(communities_generator)
+    #print(sorted(map(sorted, next_level_communities)))
     end = time.time()
     print(f'Time to complete: {end - start:.2f}s\n')
     #models.drawCrossSection(mods)

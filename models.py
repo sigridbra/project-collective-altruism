@@ -3,10 +3,10 @@ from operator import itemgetter
 import heapq
 import random
 import matplotlib.pyplot as plt
+import matplotlib.colors as col
 from networkx.drawing.nx_agraph import graphviz_layout, to_agraph
 from copy import deepcopy
 import seaborn as sns
-#import pygraphviz as pgv
 from statistics import stdev, mean
 import imageio
 import networkx as nx
@@ -14,6 +14,7 @@ from networkx.algorithms import community
 from scipy.stats import truncnorm
 import os
 from functools import reduce
+import time
 
 def get_truncated_normal(mean=0, sd=1, low=0, upp=10):
     return truncnorm(
@@ -23,13 +24,15 @@ def get_truncated_normal(mean=0, sd=1, low=0, upp=10):
 
 states = [1, -1] #1 being cooperating, -1 being defecting
 defectorUtility = -0.20 
-politicalClimate=0.20 
-selfWeight = 0.4
-d = 2
+politicalClimate=0.25 
+selfWeight = 0.6
+d = 2 #degree
 s = 100
 k=3000 #10^6
-continuous = False
-X = get_truncated_normal(0.5, 0.25, 0, 1)
+continuous = True
+
+#X = get_truncated_normal(0.5, 0.25, 0, 1)
+#S = get_truncated_normal(0, 0.25, -1, 1)
 
 
 args = {"defectorUtility" : defectorUtility, 
@@ -41,16 +44,18 @@ def simulate(i, newArgs):
     setArgs(newArgs)
     global args
     
+    X = get_truncated_normal(0.5, 0.25, 0, 1)
+    S = get_truncated_normal(0, 0.25, -1, 1)
     if(args["type"] == "cl"):
-        model =ClusteredPowerlawModel(144, args["d"])
+        model =ClusteredPowerlawModel(144, args["d"], X=X, S=S)
     elif(args["type"] == "sf"):
-        model = ScaleFreeModel(144, args["d"])
+        model = ScaleFreeModel(144, args["d"],  X=X, S=S)
     elif(args["type"] == "grid"):
-        model = GridModel(12)
+        model = GridModel(12,  X=X, S=S)
     elif(args["type"] == "rand"):
-        model = RandomModel(144, args["d"])
+        model = RandomModel(144, args["d"],  X=X, S=S)
     else:
-        model = RandomModel(144, args["d"])
+        model = RandomModel(144, args["d"],  X=X, S=S)
     
     res = model.runSim(k)
     return model
@@ -62,17 +67,6 @@ def setArgs(newArgs):
     for arg, value in newArgs.items():
         args[arg] = value
 
-def getFriendshipWeight():
-    #weigth = random.uniform(0.1, 0.9)
-    global X
-    weigth = X.rvs(1)
-    return weigth
-
-def getInitialState():
-    #state = states[random.randint(0,1)]
-    state = random.uniform(-1, 1)
-    #state= getRandomExpo()
-    return state
 
 def decision(probability):
     return random.random() < probability
@@ -174,7 +168,7 @@ class Agent:
         
 
 class Model:
-    def __init__(self):
+    def __init__(self, X = None, S=None):
         self.graph = nx.Graph()
         self.ratio = []
         self.states = []
@@ -183,18 +177,18 @@ class Model:
         self.defectorDefectingNeighsSTDList = []
         self.cooperatorDefectingNeighsSTDList =[]
         self.pos = []
+        self.X = X
+        self.S = S
     
     def interact(self):
         nodeIndex = random.randint(0, len(self.graph) - 1)
         node = self.graph.nodes[nodeIndex]['agent']
-        
         neighbours =  list(self.graph.adj[nodeIndex].keys())
         if(len(neighbours) == 0):
             return
         
         chosenNeighbourIndex = neighbours[random.randint(0, len(neighbours)-1)]
         chosenNeighbour = self.graph.nodes[chosenNeighbourIndex]['agent']
-        
         weight = self.graph[nodeIndex][chosenNeighbourIndex]['weight']
         
         node.consider(chosenNeighbour, weight)
@@ -267,6 +261,20 @@ class Model:
         for node in self.graph:
             state += self.graph.nodes[node]['agent'].state
         return state/len(self.graph)
+
+    def getFriendshipWeight(self):
+        #weigth = random.uniform(0.1, 0.9)
+        #global X
+        weigth = self.X.rvs(1)
+        return weigth
+
+    def getInitialState(self):
+        #state = states[random.randint(0,1)]
+        #state = random.uniform(-1, 1)
+        #state= getRandomExpo()
+        #global S
+        state = self.S.rvs(1)
+        return state
  
     def runSim(self, k, groupInteract=False, drawModel = False, countNeighbours = False, gifname=None):
         
@@ -317,6 +325,7 @@ class Model:
             images = []
             for filename in filenames:
                 images.append(imageio.imread(filename))
+            #0.08167
             imageio.mimsave("network" +gifname+ ".gif", images, duration=0.08167)
        
     
@@ -330,13 +339,13 @@ class Model:
         return self.ratio
 
 class GridModel(Model):
-    def __init__(self, n):
-        super().__init__()
+    def __init__(self, n, **kwargs):
+        super().__init__(**kwargs)
         for i in range(n):
             for j in range (n):
                 
-                weight = getFriendshipWeight()
-                agent1 = Agent(getInitialState())
+                weight = self.getFriendshipWeight()
+                agent1 = Agent(self.getInitialState())
                 self.graph.add_node(i*n+j, agent=agent1, pos=(i, j))
                 self.pos.append((i, j))
                 if(i!=0):
@@ -346,47 +355,48 @@ class GridModel(Model):
     
 
 class ScaleFreeModel(Model):
-    def __init__(self, n, m):
-        super().__init__()
+    def __init__(self, n, m, **kwargs):
+        super().__init__(**kwargs)
         
         self.graph = nx.barabasi_albert_graph(n, m)
         for n in range (n):
-                agent1 = Agent(getInitialState())
+                agent1 = Agent(self.getInitialState())
                 self.graph.nodes[n]['agent'] = agent1
         edges = self.graph.edges() 
         for e in edges: 
             
-            weight = getFriendshipWeight()
+            weight = self.getFriendshipWeight()
             self.graph[e[0]][e[1]]['weight'] = weight 
         self.pos = nx.kamada_kawai_layout(self.graph)
 
 class ClusteredPowerlawModel(Model):
-    def __init__(self, n, m):
-        super().__init__()
+    def __init__(self, n, m, **kwargs):
+        super().__init__(**kwargs)
         
         self.graph = nx.powerlaw_cluster_graph(n, m, 0.5)
         for n in range (n):
-                agent1 = Agent(getInitialState())
+                agent1 = Agent(self.getInitialState())
                 self.graph.nodes[n]['agent'] = agent1
         edges = self.graph.edges() 
         for e in edges: 
-            weight=getFriendshipWeight()
+            weight=self.getFriendshipWeight()
             self.graph[e[0]][e[1]]['weight'] = weight 
-        self.pos = nx.kamada_kawai_layout(self.graph)
+        #self.pos = nx.kamada_kawai_layout(self.graph)
+        self.pos = nx.spring_layout(self.graph)
         
 class RandomModel(Model):
-    def __init__(self, n, m):
+    def __init__(self, n, m, **kwargs):
         #m is avg degree/2
-        super().__init__()
+        super().__init__(**kwargs)
         p = 2*m/(n-1)
         
         self.graph =nx.erdos_renyi_graph(n, p)
         for n in range (n):
-                agent1 = Agent(getInitialState())
+                agent1 = Agent(self.getInitialState())
                 self.graph.nodes[n]['agent'] = agent1
         edges = self.graph.edges() 
         for e in edges: 
-            weight=getFriendshipWeight()
+            weight=self.getFriendshipWeight()
             
             self.graph[e[0]][e[1]]['weight'] = weight 
         self.pos = nx.kamada_kawai_layout(self.graph)
@@ -398,101 +408,19 @@ class RandomModel(Model):
     ##shell_layout(G[, nlist, scale, center, dim])	Position nodes in concentric circles.
     #spring_layout(G[, k, pos, fixed, …])	Position nodes using Fruchterman-Reingold force-directed algorithm.
     #spectral_layout(G[, weight, scale, center, dim])	Position nodes using the eigenvectors of the graph Laplacian.
+
+
+
+
+def findClusters(model):
+    return 0
     
-class NewmanModel(Model):
-    def __init__(self, n):
-        super().__init__()
-        for i in range (n):
-            agent1 = Agent(states[random.randint(0,1)])
-            self.graph.add_node(i, agent=agent1)
-        z = 5
-        r0 = 0.0005
-        r1= 2
-        np = n*(n-1)/2
-        timesteps = 100
-        for t in range(timesteps):
-            degrees = [e[1] for e in list(nx.degree(self.graph))]
-            degrees.insert(0,0)
-            nm = reduce(lambda x, y: x+y*(y-1), degrees)/2
-            print("degrees: ", degrees)
-            for p in range(round(np*r0)):
-                print(p)
-                i = random.randint(0, len(self.graph) - 1)
-                j =  random.randint(0, len(self.graph) - 1)
-                while(i == j):
-                    j = random.randint(0, len(self.graph) - 1)
-                neighboursi =  degrees[i+1]
-                neighboursj =  degrees[j+1]
-                if(neighboursi >= z or neighboursj >= z ):
-                    print("already enough firends")
-                    continue
-                if(self.graph.has_edge(i, j)):
-                    print("already friends")
-                    continue
-                self.graph.add_edge(i, j, weight = 1)
-                
-            prob = list(map(lambda x: x*(x-1), degrees[1:-1]))
-            #probs = np.array(prob)/sum(prob)
-            test = []
-            for i in range(len(prob)):
-                if(prob[i] > 0):
-                    for j in range(1, prob[i]):
-                        test.append(i) 
-            for p in range(round(nm*r1)):
-                node = random.choice(test)
-                
-                neighbours =  list(self.graph.adj[int(node)].keys())
-                i = random.randint(0, len(neighbours) - 1)
-                j =  random.randint(0, len(neighbours) - 1)
-                while(i == j):
-                    j = random.randint(0, len(self.graph) - 1)
-                neighboursi =  degrees[i+1]
-                neighboursj =  degrees[j+1]
-                if(neighboursi >= z or neighboursj >= z ):
-                    print("already enough firends")
-                    continue
-                if(not self.graph.has_edge(i, j)):
-                    self.graph.add_edge(i, j, weight = 1)
-        self.pos = nx.kamada_kawai_layout(self.graph)
 
 
-            
-            
-    
-def makeRandomModel(n, m, algorithm="ba"):
-    model = Model()
-    X = get_truncated_normal(0.5, 0.15, 0, 1)
-    if(algorithm == "er"):
-        model.graph =nx.erdos_renyi_graph(n, 0.027972)
-    else:
-        model.graph = nx.barabasi_albert_graph(n, m)
-    for n in range (n):
-            agent1 = Agent(states[random.randint(0,1)])
-            model.graph.nodes[n]['agent'] = agent1
-    edges = model.graph.edges() 
-    for e in edges: 
-        #weight=random.uniform(0.1, 0.9)
-        weight=X.rvs(1)
-        model.graph[e[0]][e[1]]['weight'] = weight 
-    #pos = nx.nx_agraph.graphviz_layout(model.graph)
-    #pos = graphviz_layout(model.graph)
-    pos = nx.kamada_kawai_layout(model.graph)
-# bipartite_layout(G, nodes[, align, scale, …])	Position nodes in two straight lines.
-#circular_layout(G[, scale, center, dim])	Position nodes on a circle.
-#kamada_kawai_layout(G[, dist, pos, weight, …])	Position nodes using Kamada-Kawai path-length cost-function.
-#random_layout(G[, center, dim, seed])	Position nodes uniformly at random in the unit square.
-#rescale_layout(pos[, scale])	Return scaled position array to (-scale, scale) in all axes.
-##shell_layout(G[, nlist, scale, center, dim])	Position nodes in concentric circles.
-#spring_layout(G[, k, pos, fixed, …])	Position nodes using Fruchterman-Reingold force-directed algorithm.
-#spectral_layout(G[, weight, scale, center, dim])	Position nodes using the eigenvectors of the graph Laplacian. 
-
-    model.pos = pos
-    
-    return model
-
-import matplotlib.pyplot as plt
 from IPython.display import Image
 
+
+#-------- drawing functions ---------
 
 def draw_model(model, save=False, filenumber = None):
     
@@ -512,7 +440,7 @@ def draw_model(model, save=False, filenumber = None):
             color_map.append((247/255,121/255,109/255, -1*model.graph.nodes[node]['agent'].state ))
             intensities.append(model.graph.nodes[node]['agent'].state)
     degrees = nx.degree(model.graph)
-    plt.subplot(121)
+    #plt.subplot(121)
     nx.draw(model.graph, model.pos, node_size=[d[1] * 30 for d in degrees], node_color =intensities, cmap = plt.cm.RdYlGn, vmin=-1, vmax=1 )
     #plt.colorbar(mcp)
     #plt.show()
@@ -642,8 +570,8 @@ def avgRadialDist(models, depth, isBefore):
 def drawAvgState(models, avg =False, pltNr=1, title=""):
     plt.xlabel("timesteps")
     plt.ylabel("fraction of cooperators")
-    
-    plt.subplot(2, 2, pltNr, title=title)
+    mypalette = ["blue","red","green", "yellow", "orange", "violet", "grey", "grey","grey"]
+    plt.subplot(1, 2, 1, title="Avg ratio of cooperators + SD")
     if(not avg):
         plt.ylim((0, 1))
         for i in range(len(models)):
@@ -656,20 +584,22 @@ def drawAvgState(models, avg =False, pltNr=1, title=""):
         array = np.array(states)
         avg = array.mean(axis=0)
         std = array.std(axis=0)
-        plt.plot(avg, color="r")
-        plt.plot(avg-std, color="#ffa500")
-        plt.plot(avg+std, color="#ffa500")
+        plt.plot(avg, color=mypalette[pltNr-1], label=title)
+        plt.plot(avg-std, color=col.to_rgba(mypalette[pltNr-1], 0.5))
+        plt.plot(avg+std, color=col.to_rgba(mypalette[pltNr-1], 0.5))
     
 
-def drawCrossSection(models):
+def drawCrossSection(models, pltNr = 1):
     values = []
+    mypalette = ["blue","red","green", "yellow", "orange", "violet", "grey", "grey","grey"]
     for model in models:
         values.append(model.states[-1])
-    plt.ylim((0, 2))
-    plt.xlim((-1, 1))
-    plt.title('Density Plot of state for simulations')
-    plt.xlabel('avg state of cooperators after all time steps')
-    plt.ylabel('Density')
+    plt.subplot(1, 2, 2, title="Density Plot of state for simulations")
+    plt.xlim((0, 2))
+    plt.ylim((-1, 1))
+    #plt.title('Density Plot of state for simulations')
+    #plt.xlabel('avg state of cooperators after all time steps')
+    plt.xlabel('Density')
     sns.distplot(values, hist=False, kde=True, 
-              color = 'blue')
-    plt.show()
+              color = mypalette[pltNr-1], vertical=True)
+    #plt.show()
