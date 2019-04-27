@@ -21,8 +21,11 @@ import os
 from pathlib import Path
 
 if __name__ ==  '__main__': 
-    model = models.ClusteredPowerlawModel(20, 3)
-    plt.figure(0)
+    model = models.GridModel(10)
+    fg = plt.figure(0)
     models.draw_model(model)
     plt.show()
-    model.runSim(200, gifname="master-detailed")
+    #model.runSim(200, gifname="master-detailed")
+    fn = Path('~/Documents/Prosjek/Master/Networkstructure/lattice100.svg').expanduser()
+
+    fg.savefig(fn, bbox_inches='tight')

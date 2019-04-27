@@ -1,20 +1,20 @@
 import numpy as np
-from operator import itemgetter
-import heapq
+#from operator import itemgetter
+#import heapq
 import random
 import matplotlib.pyplot as plt
 import matplotlib.colors as col
-from networkx.drawing.nx_agraph import graphviz_layout, to_agraph
+#from networkx.drawing.nx_agraph import graphviz_layout, to_agraph
 from copy import deepcopy
 import seaborn as sns
 from statistics import stdev, mean
 import imageio
 import networkx as nx
-from networkx.algorithms import community
 from scipy.stats import truncnorm
 import os
-from functools import reduce
+#from functools import reduce
 import time
+import community
 
 def get_truncated_normal(mean=0, sd=1, low=0, upp=10):
     return truncnorm(
@@ -24,7 +24,7 @@ def get_truncated_normal(mean=0, sd=1, low=0, upp=10):
 
 states = [1, -1] #1 being cooperating, -1 being defecting
 defectorUtility = -0.20 
-politicalClimate=0.25 
+politicalClimate=0.20 
 selfWeight = 0.6
 d = 2 #degree
 s = 100
@@ -44,14 +44,14 @@ def simulate(i, newArgs):
     setArgs(newArgs)
     global args
     
-    X = get_truncated_normal(0.5, 0.25, 0, 1)
+    X = get_truncated_normal(0.5, 0.2, 0, 1)
     S = get_truncated_normal(0, 0.25, -1, 1)
     if(args["type"] == "cl"):
         model =ClusteredPowerlawModel(144, args["d"], X=X, S=S)
     elif(args["type"] == "sf"):
         model = ScaleFreeModel(144, args["d"],  X=X, S=S)
     elif(args["type"] == "grid"):
-        model = GridModel(12,  X=X, S=S)
+        model = GridModel(12, X=X, S=S)
     elif(args["type"] == "rand"):
         model = RandomModel(144, args["d"],  X=X, S=S)
     else:
@@ -266,15 +266,15 @@ class Model:
         #weigth = random.uniform(0.1, 0.9)
         #global X
         weigth = self.X.rvs(1)
-        return weigth
+        return weigth[0]
 
     def getInitialState(self):
         #state = states[random.randint(0,1)]
         #state = random.uniform(-1, 1)
         #state= getRandomExpo()
         #global S
-        state = self.S.rvs(1)
-        return state
+        #state = self.S.rvs(1)
+        return states[0]
  
     def runSim(self, k, groupInteract=False, drawModel = False, countNeighbours = False, gifname=None):
         
@@ -413,16 +413,49 @@ class RandomModel(Model):
 
 
 def findClusters(model):
-    return 0
+    partition = community.best_partition(model.graph)
+    return partition
     
+def findAvgStateInClusters(model, part):
+    #part = findClusters(model)
+    print("communities: ", len(set(part.values())))
+    print(part)
+    states = [[] for i in range(len(set(part.values())))]
+   
+    for n, v in part.items():
+        states[v].append(model.graph.node[n]['agent'].state)
+    print(states)
+    clusters = []
+    sd = []
+    clsize = []
+    for c in range(len(states)):
+        clusters.append(mean(states[c]))
+        sd.append(stdev(states[c]))
+        clsize.append(len(states[c]))
+    return (clusters, sd, clsize)
 
-
+def drawClusteredModel(model):
+    partition = findClusters(model)
+    mypalette = ["blue","red","green", "yellow", "orange", "violet", "grey", "magenta","cyan"]
+    for k, v in partition.items():
+        model.graph.node[k]["louvain-val"] = v
+    
+    #colors = [mypalette[G.node[node]["louvain-val"] %9 ]  for node in G.nodes()]
+#    edge_col = [mypalette[model.graph.node[node]["louvain-val"]+1 % 8 ]  for node in model.graph.nodes()]
+    edge_col = []
+    for node in model.graph.nodes():
+        edge_col.append(mypalette[model.graph.node[node]["louvain-val"] % 9 ])
+    
+    draw_model(model, outline=edge_col, partition = partition)
+    
+    
 from IPython.display import Image
 
 
 #-------- drawing functions ---------
+import matplotlib.patches as mpatches
 
-def draw_model(model, save=False, filenumber = None):
+def draw_model(model, save=False, filenumber = None, outline=None, partition=None):
     
     #plt.figure(figsize=(16,16))
 
@@ -435,15 +468,29 @@ def draw_model(model, save=False, filenumber = None):
             color_map.append((3/255,164/255,94/255, model.graph.nodes[node]['agent'].state))
             intensities.append(model.graph.nodes[node]['agent'].state)
             #color_map.append('#03a45e')
-        #else: color_map.append('#f7796d')
+            #else: color_map.append('#f7796d')
+            
         else: 
             color_map.append((247/255,121/255,109/255, -1*model.graph.nodes[node]['agent'].state ))
             intensities.append(model.graph.nodes[node]['agent'].state)
     degrees = nx.degree(model.graph)
     #plt.subplot(121)
-    nx.draw(model.graph, model.pos, node_size=[d[1] * 30 for d in degrees], node_color =intensities, cmap = plt.cm.RdYlGn, vmin=-1, vmax=1 )
+    nx.draw(model.graph, model.pos, node_size=[d[1] * 30 for d in degrees], linewidths=2, node_color =intensities, cmap=plt.cm.RdYlGn,  vmin=-1, vmax=1 )
     #plt.colorbar(mcp)
     #plt.show()
+    
+    if(outline !=None):
+        mypalette = ["blue","red","green", "yellow", "orange", "violet", "grey", "magenta","cyan", "cyan", "cyan", "cyan"]
+        ax = plt.gca()
+        ax.collections[0].set_edgecolor(outline)
+        (clusters, sd, clsize) = findAvgStateInClusters(model, part= partition)
+        text = [f'x={clusters[c]:5.2f} sd={sd[c]:5.2f} n={clsize[c]}' for c in range(len(clusters))]
+        #print(text)
+        handles = [mpatches.Patch(color=mypalette[c], label=text[c]) for c in range(len(text))]
+        ax.legend(handles=handles)
+        plt.title("Snapshot of network with states and clusters")
+
+
     if(save):
         plt.title(filenumber)
         plt.savefig("plot" + str(filenumber) +".png", bbox_inches="tight")
@@ -601,5 +648,5 @@ def drawCrossSection(models, pltNr = 1):
     #plt.xlabel('avg state of cooperators after all time steps')
     plt.xlabel('Density')
     sns.distplot(values, hist=False, kde=True, 
-              color = mypalette[pltNr-1], vertical=True)
+    color = mypalette[pltNr-1], vertical=True)
     #plt.show()

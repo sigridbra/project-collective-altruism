@@ -23,8 +23,9 @@ import os
 from pathlib import Path
 
 #Constants and Variables
+fn = Path('~/Documents/Prosjek/Master/clustered-test.svg').expanduser()
+s = 1 #10^3 
 
-s = 100 #10^3 
 if __name__ ==  '__main__': 
     num_processors = 8
     start = time.time()
@@ -41,40 +42,42 @@ if __name__ ==  '__main__':
     sim1 = p.starmap(models.simulate, zip(range(1), repeat(args2)))
     #G = nx.barbell_graph(5, 1)
     #community_gen = community.girvan_newman(sim1[0].graph)
-    partition = community.best_partition(sim1[0].graph)
     #top_lvl = next(community_gen)
     #next_lvl = next(community_gen)
     #print(sorted(map(sorted, next_lvl)))
     #part = community.label_propagation_communities(sim1[0].graph)
     #for el in part:print(el)
-    print(partition)
-    
-    print("Number of Communities: ", len(set(partition.values())))
-    for k, v in partition.items():
+    #print(partition)
+    fg = plt.figure()
+    #print("Number of Communities: ", len(set(partition.values())))
+    """for k, v in partition.items():
         sim1[0].graph.node[k]["louvain-val"] = v
-    mypalette = ["blue","red","green", "yellow", "orange", "violet", "grey", "grey","grey"]
-    colors = [mypalette[sim1[0].graph.node[node]["louvain-val"] %7 ]  for node in sim1[0].graph.nodes()]
+    mypalette = ["blue","red","green", "yellow", "orange", "violet", "grey", "magenta","cyan"]
+    colors = [mypalette[sim1[0].graph.node[node]["louvain-val"] %9 ]  for node in sim1[0].graph.nodes()]
     
     plt.figure(figsize=(10,10))
     plt.axis('off')
-    pos = nx.kamada_kawai_layout(sim1[0].graph, scale=3)
-    nx.draw_networkx_nodes(sim1[0].graph, pos, node_color=colors, node_size=20, label=True)
-    nx.draw_networkx_edges(sim1[0].graph, pos, alpha=0.4)
+    pos = nx.spring_layout(sim1[0].graph, scale=3)
+    nx.draw_networkx_nodes(sim1[0].graph, pos, node_color=colors, node_size=40, label=True)
+    nx.draw_networkx_edges(sim1[0].graph, pos, alpha=0.4)"""
+    models.drawClusteredModel(sim1[0])
     
     #top_level_communities = next(communities_generator)
     #next_level_communities = next(communities_generator)
     #print(sorted(map(sorted, next_level_communities)))
+    
     end = time.time()
     print(f'Time to complete: {end - start:.2f}s\n')
     #models.drawCrossSection(mods)
-    fg= plt.figure()
-    fg.subplots(nrows=1, ncols=2 )  
+    #fg= plt.figure()
+    #fg.subplots(nrows=1, ncols=2 )  
     #models.draw_model(sim1[0])
-    plt.draw()
+    ax = fg.gca()
+    #ax.draw()
     plt.show()
-    #fn = Path('~/Documents/Prosjek/Master/Comp/uniformw-sw0.8-k50-test.svg').expanduser()
+    
 
-    #plt.savefig(fn, bbox_inches='tight')
+    fg.savefig(fn, bbox_inches='tight')
     """plt.xlabel("timesteps")
     plt.ylabel("fraction of cooperators")
     plt.ylim((0, 1))
