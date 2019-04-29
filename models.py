@@ -24,15 +24,12 @@ def get_truncated_normal(mean=0, sd=1, low=0, upp=10):
 
 states = [1, -1] #1 being cooperating, -1 being defecting
 defectorUtility = -0.20 
-politicalClimate=0.20 
-selfWeight = 0.6
+politicalClimate= 0.20 
+selfWeight = 0.8
 d = 2 #degree
 s = 100
 k=3000 #10^6
 continuous = True
-
-#X = get_truncated_normal(0.5, 0.25, 0, 1)
-#S = get_truncated_normal(0, 0.25, -1, 1)
 
 
 args = {"defectorUtility" : defectorUtility, 
@@ -44,8 +41,8 @@ def simulate(i, newArgs):
     setArgs(newArgs)
     global args
     
-    X = get_truncated_normal(0.5, 0.2, 0, 1)
-    S = get_truncated_normal(0, 0.25, -1, 1)
+    X = get_truncated_normal(0.5, 0.15, 0, 1)
+    S = get_truncated_normal(0.05, 0.25, -1, 1)
     if(args["type"] == "cl"):
         model =ClusteredPowerlawModel(144, args["d"], X=X, S=S)
     elif(args["type"] == "sf"):
@@ -60,6 +57,64 @@ def simulate(i, newArgs):
     res = model.runSim(k)
     return model
 
+def hybridasim():
+    X = get_truncated_normal(0.5, 0.15, 0, 1)
+    S = get_truncated_normal(0.05, 0.25, -1, 1)
+    model = KarateModel(X=X, S=S)
+    model.graph.nodes[0]['agent'].state = -1
+    model.graph.nodes[33]['agent'].state = 1
+    model.runSim(500)
+    #drawClusteredModel(model)
+    #partition = findClusters(model)
+    partition = {}
+    tk = [0,1,2,3,4,5,6,7,8,10,11,12,13,16,17,19,21]
+    jk = [9,14,15,18,20,22,23,24,25,26,27,28,29,30,31,32,33]
+    edge_col = []
+    mypalette = ["green","magenta","grey", "yellow", "orange", "violet", "grey", "magenta","cyan"]
+    mytext = ["Testokom", "Ladybugs", "5. klasse", ""]
+    for mem in model.graph.nodes():
+        if mem in tk:
+            #model.graph.node[mem]["group"] = "tk"
+            edge_col.append(mypalette[0])
+            partition[mem] = 0
+        else:
+            #model.graph.node[mem]["group"] = "jk"
+            edge_col.append(mypalette[1])
+            partition[mem] = 1
+    
+    
+    #for k, v in partition.items():
+    #    model.graph.node[k]["louvain-val"] = v
+    
+    
+    #for node in model.graph.nodes():
+    #    edge_col.append(mypalette[model.graph.node[node]["louvain-val"] % 9 ])
+    
+    #draw_model(model, outline=edge_col, partition = partition)
+    color_map = []
+    intensities = []
+    
+    for node in model.graph:
+        
+        if model.graph.nodes[node]['agent'].state > 0:
+            color_map.append((3/255,164/255,94/255, model.graph.nodes[node]['agent'].state))
+            intensities.append(model.graph.nodes[node]['agent'].state)            
+        else: 
+            color_map.append((247/255,121/255,109/255, -1*model.graph.nodes[node]['agent'].state ))
+            intensities.append(model.graph.nodes[node]['agent'].state)
+    degrees = nx.degree(model.graph)
+    print("jk: ", degrees[0], "tk: ", degrees[33])
+    nx.draw(model.graph, model.pos, node_size=[d[1] * 30 for d in degrees], linewidths=2, node_color =intensities, cmap=plt.cm.RdYlGn,  vmin=-1, vmax=1 )
+    
+    #mypalette = ["blue","red","green", "yellow", "orange", "violet", "grey", "magenta","cyan", "cyan", "cyan", "cyan"]
+    ax = plt.gca()
+    ax.collections[0].set_edgecolor(edge_col)
+    (clusters, sd, clsize) = findAvgStateInClusters(model, part= partition)
+    text = [f'{mytext[c % 4]} x={clusters[c]:5.2f} sd={sd[c]:5.2f} n={clsize[c]}' for c in range(len(clusters))]
+    #print(text)
+    handles = [mpatches.Patch(color=mypalette[c], label=text[c]) for c in range(len(text))]
+    ax.legend(handles=handles)
+    plt.title("Snapshot of network with states and clusters")
 
 #Helper
 def setArgs(newArgs):
@@ -269,12 +324,15 @@ class Model:
         return weigth[0]
 
     def getInitialState(self):
-        #state = states[random.randint(0,1)]
-        #state = random.uniform(-1, 1)
+        global args
+        if(args['continuous'] != True):
+            state = states[random.randint(0,1)]
+        else:   
+            state = random.uniform(-1, 1)
         #state= getRandomExpo()
         #global S
         #state = self.S.rvs(1)
-        return states[0]
+        return state#[0]
  
     def runSim(self, k, groupInteract=False, drawModel = False, countNeighbours = False, gifname=None):
         
@@ -409,7 +467,21 @@ class RandomModel(Model):
     #spring_layout(G[, k, pos, fixed, …])	Position nodes using Fruchterman-Reingold force-directed algorithm.
     #spectral_layout(G[, weight, scale, center, dim])	Position nodes using the eigenvectors of the graph Laplacian.
 
-
+class KarateModel(Model):
+    def __init__(self, **kwargs):
+        #m is avg degree/2
+        super().__init__(**kwargs)
+        
+        self.graph =nx.karate_club_graph()
+        for n in range (len(self.graph.nodes)):
+                agent1 = Agent(self.getInitialState())
+                self.graph.nodes[n]['agent'] = agent1
+        edges = self.graph.edges() 
+        for e in edges: 
+            weight=self.getFriendshipWeight()
+            
+            self.graph[e[0]][e[1]]['weight'] = weight 
+        self.pos = nx.spring_layout(self.graph)
 
 
 def findClusters(model):
@@ -418,8 +490,8 @@ def findClusters(model):
     
 def findAvgStateInClusters(model, part):
     #part = findClusters(model)
-    print("communities: ", len(set(part.values())))
-    print(part)
+    #print("communities: ", len(set(part.values())))
+    #print(part)
     states = [[] for i in range(len(set(part.values())))]
    
     for n, v in part.items():
@@ -430,8 +502,11 @@ def findAvgStateInClusters(model, part):
     clsize = []
     for c in range(len(states)):
         clusters.append(mean(states[c]))
-        sd.append(stdev(states[c]))
         clsize.append(len(states[c]))
+        if(len(states[c])>1):
+            sd.append(stdev(states[c]))
+        else:
+            sd.append(0)
     return (clusters, sd, clsize)
 
 def drawClusteredModel(model):
@@ -439,13 +514,15 @@ def drawClusteredModel(model):
     mypalette = ["blue","red","green", "yellow", "orange", "violet", "grey", "magenta","cyan"]
     for k, v in partition.items():
         model.graph.node[k]["louvain-val"] = v
-    
+    degrees = nx.degree(model.graph)
+
     #colors = [mypalette[G.node[node]["louvain-val"] %9 ]  for node in G.nodes()]
 #    edge_col = [mypalette[model.graph.node[node]["louvain-val"]+1 % 8 ]  for node in model.graph.nodes()]
     edge_col = []
     for node in model.graph.nodes():
         edge_col.append(mypalette[model.graph.node[node]["louvain-val"] % 9 ])
     
+    plt.subplot(1, 2, 2, title="Cluster membership")
     draw_model(model, outline=edge_col, partition = partition)
     
     
@@ -618,7 +695,7 @@ def drawAvgState(models, avg =False, pltNr=1, title=""):
     plt.xlabel("timesteps")
     plt.ylabel("fraction of cooperators")
     mypalette = ["blue","red","green", "yellow", "orange", "violet", "grey", "grey","grey"]
-    plt.subplot(1, 2, 1, title="Avg ratio of cooperators + SD")
+    plt.subplot(1, 3, 1, title="Avg ratio of cooperators + SD")
     if(not avg):
         plt.ylim((0, 1))
         for i in range(len(models)):
@@ -641,12 +718,23 @@ def drawCrossSection(models, pltNr = 1):
     mypalette = ["blue","red","green", "yellow", "orange", "violet", "grey", "grey","grey"]
     for model in models:
         values.append(model.states[-1])
-    plt.subplot(1, 2, 2, title="Density Plot of state for simulations")
+    plt.subplot(1, 3, 2, title="Density Plot of state for simulations")
     plt.xlim((0, 2))
     plt.ylim((-1, 1))
     #plt.title('Density Plot of state for simulations')
     #plt.xlabel('avg state of cooperators after all time steps')
     plt.xlabel('Density')
-    sns.distplot(values, hist=False, kde=True, 
-    color = mypalette[pltNr-1], vertical=True)
+    sns.distplot(values, hist=False, kde=True, color = mypalette[pltNr-1], vertical=True)
     #plt.show()
+
+def drawClustersizes(models, pltNr = 1):
+    mypalette = ["blue","red","green", "yellow", "orange", "violet", "grey", "grey","grey"]
+    sizes = []
+    for model in models:
+        part = findClusters(model)
+        (avg, sd, size) = findAvgStateInClusters(model, part)
+        for s in size:
+            sizes.append(s)
+    plt.subplot(1, 3, 3, title="Density Plot of clustersize simulations")
+    plt.xlabel("Clustersize")
+    sns.distplot(sizes, hist=True, kde=True, color = mypalette[pltNr-1])

@@ -21,11 +21,11 @@ import os
 from pathlib import Path
 
 if __name__ ==  '__main__': 
-    model = models.GridModel(10)
+
     fg = plt.figure(0)
-    models.draw_model(model)
+    models.hybridasim()
     plt.show()
     #model.runSim(200, gifname="master-detailed")
-    fn = Path('~/Documents/Prosjek/Master/Networkstructure/lattice100.svg').expanduser()
+    fn = Path('~/Documents/Prosjek/Master/Networkstructure/hybridasim.svg').expanduser()
 
     fg.savefig(fn, bbox_inches='tight')
