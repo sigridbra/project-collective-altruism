@@ -60,7 +60,7 @@ if __name__ ==  '__main__':
     pos = nx.spring_layout(sim1[0].graph, scale=3)
     nx.draw_networkx_nodes(sim1[0].graph, pos, node_color=colors, node_size=40, label=True)
     nx.draw_networkx_edges(sim1[0].graph, pos, alpha=0.4)"""
-    models.drawClusteredModel(sim1[0])
+    models.draw_model(sim1[0])
     
     #top_level_communities = next(communities_generator)
     #next_level_communities = next(communities_generator)
@@ -68,16 +68,11 @@ if __name__ ==  '__main__':
     
     end = time.time()
     print(f'Time to complete: {end - start:.2f}s\n')
-    #models.drawCrossSection(mods)
-    #fg= plt.figure()
-    #fg.subplots(nrows=1, ncols=2 )  
-    #models.draw_model(sim1[0])
     ax = fg.gca()
-    #ax.draw()
     plt.show()
     
 
-    fg.savefig(fn, bbox_inches='tight')
+    #fg.savefig(fn, bbox_inches='tight')
     """plt.xlabel("timesteps")
     plt.ylabel("fraction of cooperators")
     plt.ylim((0, 1))

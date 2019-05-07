@@ -26,6 +26,6 @@ if __name__ ==  '__main__':
     models.hybridasim()
     plt.show()
     #model.runSim(200, gifname="master-detailed")
-    fn = Path('~/Documents/Prosjek/Master/Networkstructure/hybridasim.svg').expanduser()
+    fn = Path('~/Documents/Prosjek/Master/Networkstructure/hybridasim-2.svg').expanduser()
 
     fg.savefig(fn, bbox_inches='tight')
