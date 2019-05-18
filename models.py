@@ -29,9 +29,9 @@ newPoliticalClimate = 0.25
 selfWeight = 0.6
 d = 5 #degree
 s = 10
-k=1500 #10^6
+k=3000 #10^6
 continuous = True
-skew = -0.10
+skew = -0.40
 initSD = 0.25
 mypalette = ["blue","red","green", "orange", "violet", "grey", "magenta","cyan", "yellow"]
 randomness = 0.25
@@ -71,8 +71,13 @@ def simulate(i, newArgs):
 #Helper
 def setArgs(newArgs):
     global args
+    #args = {"defectorUtility" : defectorUtility, 
+    #    "politicalClimate" : politicalClimate, 
+    #    "selfWeight": selfWeight, "d":d, 
+    #    "s": s, "k" : k, "continuous" : continuous, "type" : "cl", "skew": skew, "initSD": initSD, "newPoliticalClimate": newPoliticalClimate}
     for arg, value in newArgs.items():
         args[arg] = value
+    
 
 
 def decision(probability):
@@ -92,14 +97,16 @@ class Agent:
         self.interactionsGiven = 0
         self.selfWeight = selfWeight
     
-    def consider(self, neighbour, neighboursWeight):
+    def consider(self, neighbour, neighboursWeight, politicalClimate):
         self.interactionsReceived +=1
         neighbour.addInteractionGiven()
         if(self.selfWeight >= 1): return
-        weight = self.state*self.selfWeight + politicalClimate + defectorUtility + neighboursWeight*neighbour.state #+ random.uniform(-0.25, 0.25)
+        global args
+        weight = self.state*self.selfWeight + politicalClimate + args["defectorUtility"] + neighboursWeight*neighbour.state #+ random.uniform(-0.25, 0.25)
         #weight =  politicalClimate + defectorUtility + neighboursWeight*neighbour.state #+ random.uniform(-0.25, 0.25)
         #print("neighbours weight: ", neighboursWeight, " neighbours state: ", neighbour.state, " weight: ", weight)
-        global args
+        
+        
         if(args["continuous"]):
             #self.state = weight
             #print("x: ", weight)
@@ -185,7 +192,9 @@ class Agent:
 
 class Model:
     def __init__(self, X = None, S=None):
+        global args
         self.graph = nx.Graph()
+        self.politicalClimate = args["politicalClimate"]
         self.ratio = []
         self.states = []
         self.statesds = []
@@ -207,13 +216,13 @@ class Model:
         node = self.graph.nodes[nodeIndex]['agent']
         neighbours =  list(self.graph.adj[nodeIndex].keys())
         if(len(neighbours) == 0):
-            return
+            return nodeIndex
         
         chosenNeighbourIndex = neighbours[random.randint(0, len(neighbours)-1)]
         chosenNeighbour = self.graph.nodes[chosenNeighbourIndex]['agent']
         weight = self.graph[nodeIndex][chosenNeighbourIndex]['weight']
         
-        node.consider(chosenNeighbour, weight)
+        node.consider(chosenNeighbour, weight, self.politicalClimate)
         return nodeIndex
         
     def groupInteract(self):
@@ -280,10 +289,7 @@ class Model:
             
     def updateAvgNbAgreeingFriends(self, nodeIndex):
         #print(nodeIndex)
-        try: 
-            neighbours =  list(self.graph.adj[nodeIndex].keys())
-        except:
-            print("error key", nodeIndex)
+        neighbours =  list(self.graph.adj[nodeIndex].keys())
         if(len(neighbours) == 0):
             return self.avgNbAgreeingList[-1]
         nodeState = self.graph.nodes[nodeIndex]['agent'].state
@@ -409,7 +415,11 @@ class Model:
             avgFriends = self.updateAvgNbAgreeingFriends(nodeIndex)
             self.avgNbAgreeingList.append(avgFriends)
             
-            
+            global args
+            if(i ==500 and (args["newPoliticalClimate"] != args["politicalClimate"])):
+                self.politicalClimate = args["newPoliticalClimate"]
+                
+
             #self.politicalClimate += (ratio-0.5)*0.001 #change the political climate depending on the ratio of cooperators
             if(clusters):
                 (s, sds, size) = findAvgStateInClusters(self, self.partition)
