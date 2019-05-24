@@ -31,15 +31,17 @@ plt.rcParams["savefig.directory"] = "Master/Comp/Week19_2"
 if __name__ ==  '__main__': 
     start = time.time()
     
-    fn1 = Path('~/Documents/Prosjek/Master/Comp/Week19_2/4-gif-details-grid144-disc-skewed-initsd0_125.svg').expanduser()
-    fn2 = Path('~/Documents/Prosjek/Master/Comp/Week19_2/4-gif-details-grid144-disc-skewed-initsd0_125-clusters.svg').expanduser()
-    fn3 = Path('~/Documents/Prosjek/Master/Comp/Week19_2/4-gif-details-grid144-disc-skewed-initsd0_125-agreeingfriends.svg').expanduser()
+    fn1 = Path('~/Documents/Prosjek/Master/Comp/balanced/balanced70-d8-check-friends-.svg').expanduser()
+    fn2 = Path('~/Documents/Prosjek/Master/Comp/balanced/balanced70-d8-check-friends-clusters.svg').expanduser()
+    fn3 = Path('~/Documents/Prosjek/Master/Comp/balanced/balanced70-d8-check-friends-agreeingfriends.svg').expanduser()
     #fg = plt.figure()
-    model = models.simulate(0, {"type": "grid", "continuous":False, "k":1500, "skew":-0.1})#"initSD": 0.25})
-    #models.draw_model(model)
-    #plt.draw()
-    #plt.show()
+    model = models.simulate(0, {"type": "grid", "continuous":True, "k":1, "skew":0})#"initSD": 0.25})
+    print("degree: ", nx.info(model.graph))
+    
     #fg.clear()
+    model.runSim(100, clusters=True, gifname="check-friends")
+    
+
     fg1= plt.figure("states")
     fg1.subplots(nrows=1, ncols=2 )
     models.drawAvgState([model], clusterSD=True)
@@ -47,12 +49,12 @@ if __name__ ==  '__main__':
     fg1.savefig(fn1)
     
     
-    fg2 = plt.figure("cross")
+    """fg2 = plt.figure("cross")
     fg2.subplots(nrows=1, ncols=3 )
     models.drawClusterState([model], step=500, subplot=1)
     models.drawClusterState([model], step=1000, subplot=2)
     models.drawClusterState([model])
-    fg2.savefig(fn2)
+    fg2.savefig(fn2)"""
     fg3 = plt.figure("agreeingfriends")
     models.drawAvgNumberOfAgreeingFriends([model], pltNr=7)
     plt.draw()

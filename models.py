@@ -15,6 +15,10 @@ import os
 #from functools import reduce
 import time
 import community
+from operator import itemgetter
+import heapq
+import forceatlas2
+from fa2l import force_atlas2_layout
 
 def get_truncated_normal(mean=0, sd=1, low=0, upp=10):
     return truncnorm(
@@ -24,14 +28,14 @@ def get_truncated_normal(mean=0, sd=1, low=0, upp=10):
 
 states = [1, -1] #1 being cooperating, -1 being defecting
 defectorUtility = -0.20 
-politicalClimate= 0.25
-newPoliticalClimate = 0.25 
+politicalClimate= 0.20
+newPoliticalClimate = 0.20 
 selfWeight = 0.6
-d = 5 #degree
+d = 4 #degree
 s = 10
-k=3000 #10^6
+k=4000 #10^6
 continuous = True
-skew = -0.40
+skew = 0.0
 initSD = 0.25
 mypalette = ["blue","red","green", "orange", "violet", "grey", "magenta","cyan", "yellow"]
 randomness = 0.25
@@ -54,14 +58,20 @@ def simulate(i, newArgs):
     elif(args["type"] == "sf"):
         model = ScaleFreeModel(144, args["d"], skew=args["skew"], X=X, S=S)
     elif(args["type"] == "grid"):
-        model = GridModel(12, skew=args["skew"], X=X, S=S)
+        if(args["d"]>2): doubleDegree = True
+        else:doubleDegree = False
+        model = GridModel(12, skew=args["skew"], doubleDegree =doubleDegree, X=X, S=S)
     elif(args["type"] == "rand"):
         model = RandomModel(144, args["d"], skew=args["skew"], X=X, S=S)
     else:
         model = RandomModel(144, args["d"],  X=X, S=S)
     #simtime= time.time()
     #print(f'Time to make model: {simtime-start}s\n')
-    
+    if(args["type"] == "grid"): 
+        ind = [62, 66] 
+    else: 
+        ind = None
+    model.addInfluencers(2, index=ind)
     res = model.runSim(args["k"], clusters=True)
     #print("assortativity: ", nx.degree_assortativity_coefficient(model.graph))
     #print("modluarity: ", community.modularity(model.partition, model.graph))
@@ -119,7 +129,8 @@ class Agent:
             #print("delta: ", delta)
             #print("  ")
             increment = 2*delta*abs(self.state-neighbour.state)
-
+            #print("increment: ", increment)
+            #print("  ")
             self.state += increment
             #Truncate values    
             if(self.state > 1):
@@ -209,6 +220,7 @@ class Model:
         self.clusterSD = []
         self.NbAgreeingFriends = []
         self.avgNbAgreeingList = []
+        self.partition = None
     
     def interact(self):
         nodeIndex = random.randint(0, len(self.graph) - 1)
@@ -262,7 +274,7 @@ class Model:
 
     def findNbAgreeingFriends(self, nodeIdx = None):
         global args
-        nb = []
+        nbs = []
         
         if(args["continuous"]):
             for nodeIdx in self.graph.nodes:
@@ -270,23 +282,24 @@ class Model:
                 neighbours = list(self.graph.adj[nodeIdx])
                 neighStates = [self.graph.nodes[n]['agent'].state for n in neighbours ]
                 if(len(neighbours) == 0):
-                    nb.append(0)
+                    nbs.append(0)
                     continue
-                x = abs((mean(neighStates)+state))/2
-                nb.append(x)
+                x = 1-abs((mean(neighStates)-state))/2
+                nbs.append(x)
         else:
             for nodeIdx in self.graph.nodes:
                 state = self.graph.nodes[nodeIdx]['agent'].state
                 neighbours = list(self.graph.adj[nodeIdx])
                 neighs = 0
                 if(len(neighbours) == 0):
-                    nb.append(0)
+                    nbs.append(0)
                     continue
                 for neighbourIdx in neighbours:
                     if(state == self.graph.nodes[neighbourIdx]['agent'].state): neighs+=1
-                nb.append(neighs/len(neighbours))
-        self.NbAgreeingFriends = nb
-            
+                nbs.append(neighs/len(neighbours))
+        self.NbAgreeingFriends= nbs
+        return nbs
+       
     def updateAvgNbAgreeingFriends(self, nodeIndex):
         #print(nodeIndex)
         neighbours =  list(self.graph.adj[nodeIndex].keys())
@@ -297,13 +310,13 @@ class Model:
         
         if(args["continuous"]):
             neighStates = [self.graph.nodes[n]['agent'].state for n in neighbours ]
-            x = abs((mean(neighStates)+nodeState))/2
+            x = 1-abs((mean(neighStates)-nodeState))/2
             self.NbAgreeingFriends[nodeIndex] = x
             for node in neighbours:
                 nodeState = self.graph.nodes[node]['agent'].state
                 neighneigh = list(self.graph.adj[node])
                 neighStates = [self.graph.nodes[n]['agent'].state for n in neighneigh ]
-                x = abs((mean(neighStates)+nodeState))/2
+                x = 1-abs((mean(neighStates)-nodeState))/2
                 self.NbAgreeingFriends[node] = x
         else:
             neighbours.append(nodeIndex)
@@ -324,7 +337,18 @@ class Model:
                     print("neighs: ", neighneighs)      
             
         return mean(self.NbAgreeingFriends)
-
+    
+    def addInfluencers(self, number, index = None):
+        
+        if(index == None):
+            degrees = nx.degree(self.graph)
+            largest = heapq.nlargest(number, degrees, key=itemgetter(1))
+            index = [t[0] for t in largest]
+            
+        for i in range(number):
+            self.graph.node[index[i]]['agent'].setState(states[i % 2])
+            self.graph.node[index[i]]['agent'].selfWeight = 1
+            
 
     def getAvgNumberOfDefectorNeigh(self):
         defectorFriendsList = []
@@ -382,7 +406,8 @@ class Model:
         return state
  
     def runSim(self, k, groupInteract=False, drawModel = False, countNeighbours = False, gifname=None, clusters=False):
-        self.partition = community.best_partition(self.graph)
+        if(self.partition ==None):
+            self.partition = community.best_partition(self.graph)
         #modularity = community.modularity(self.partition, self.graph)
         #print("modularity of ", args["type"], " is ", modularity)
 
@@ -406,6 +431,7 @@ class Model:
         for i in range(k):
             #if(groupInteract): self.groupInteractB()
             #else:
+            #print("step: ", i)
             nodeIndex = self.interact()
             ratio = self.countCooperatorRatio()
             self.ratio.append(ratio)
@@ -413,6 +439,8 @@ class Model:
             self.states.append(state)
             self.statesds.append(sd)
             avgFriends = self.updateAvgNbAgreeingFriends(nodeIndex)
+            #avgFriends = self.findNbAgreeingFriends(nodeIndex)
+
             self.avgNbAgreeingList.append(avgFriends)
             
             global args
@@ -435,8 +463,8 @@ class Model:
                 self.cooperatorDefectingNeighsList.append(cooperatorDefectingNeighs)
                 self.defectorDefectingNeighsSTDList.append(defectorDefectingNeighsSTD)
                 self.cooperatorDefectingNeighsSTDList.append(cooperatorDefectingNeighsSTD)
-            if(gifname != None and (i % 2 == 0)):
-                draw_model(self, True, i, extraTitle = f'  avg state: {self.states[-1]:1.2f} ')
+            if(gifname != None and (i % 1 == 0)):
+                draw_model(self, True, i, extraTitle = f'  avg state: {self.states[-1]:1.2f} agreement: {self.avgNbAgreeingList[-1]:1.2f}')
                 filenames.append("plot" + str(i) +".png")
                 
             #if(i % 10 == 0):
@@ -469,7 +497,7 @@ class Model:
         global args
         for n in range (n):
             agent1 = Agent(self.getInitialState(), args["selfWeight"])
-            self.graph.nodes[n]['agent'] = agent1
+            self.graph.node[n]['agent'] = agent1
         edges = self.graph.edges() 
         for e in edges: 
             weight=self.getFriendshipWeight()
@@ -479,25 +507,36 @@ class Model:
             num = round(abs(skew)*len(self.graph.nodes))
             indexes = random.sample(range(len(self.graph.nodes)), num)
             for i in indexes:
-                self.graph.nodes[i]['agent'].state = states[1]
+                self.graph.node[i]['agent'].state = states[1]
             #self.pos = nx.kamada_kawai_layout(self.graph)
-        self.pos = nx.spring_layout(self.graph)
+        #self.pos = forceatlas2.forceatlas2_networkx_layout(self.graph)
+        self.pos = force_atlas2_layout(self.graph)
+        #self.pos = nx.spring_layout(self.graph)
 
 class GridModel(Model):
-    def __init__(self, n, skew=0, **kwargs):
+    def __init__(self, n, skew=0, doubleDegree=False, **kwargs):
         super().__init__(**kwargs)
         global args
         for i in range(n):
             for j in range (n):
-                weight = self.getFriendshipWeight()
                 agent1 = Agent(self.getInitialState(), args["selfWeight"])
                 self.graph.add_node(i*n+j, agent=agent1, pos=(i, j))
                 self.pos.append((i, j))
                 if(i!=0):
+                    weight = self.getFriendshipWeight()
                     self.graph.add_edge(i*n+j, (i-1)*n+j, weight = weight)
                 if(j!=0):
+                    weight = self.getFriendshipWeight()
                     self.graph.add_edge(i*n+j, i*n+j-1, weight = weight)
-        
+        if(doubleDegree):
+            for i in range(n):
+                for j in range(n):
+                    if(i!=0 and j!=0 ):
+                        weight = self.getFriendshipWeight()
+                        self.graph.add_edge(i*n+j, (i-1)*n+j-1, weight = weight)
+                    if(i!=0 and j!=(n-1)):
+                        weight = self.getFriendshipWeight()
+                        self.graph.add_edge(i*n+j, (i-1)*n+j+1, weight = weight)
         if(skew != 0 and not args["continuous"] ): 
                 num = round(abs(skew)*len(self.graph.nodes))
                 indexes = random.sample(range(len(self.graph.nodes)), num)
@@ -590,8 +629,11 @@ def findAvgSDinClusters(model, part):
     return sd
 
 def drawClusteredModel(model):
-    partition = findClusters(model)
-    
+    if(model.partition==None):
+        partition = findClusters(model)
+    else:
+        partition = model.partition
+
     for k, v in partition.items():
         model.graph.node[k]["louvain-val"] = v
     degrees = nx.degree(model.graph)
@@ -601,9 +643,9 @@ def drawClusteredModel(model):
     edge_col = []
     for node in model.graph.nodes():
         edge_col.append(mypalette[model.graph.node[node]["louvain-val"] % 9 ])
-    
-    plt.subplot(1, 2, 2, title="Cluster membership")
-    nx.draw(model.graph, model.pos, node_size=[d[1] * 30 for d in degrees], node_color =edge_col)
+    plt.figure(figsize=(16,16))
+    plt.subplot(1, 2, 2, title="Cluster Membership")
+    nx.draw(model.graph, model.pos, node_size=[d[1] * 20 for d in degrees], node_color =edge_col)
     (clusters, sd, clsize) = findAvgStateInClusters(model, part= partition)
     text = [f'x={clusters[c]:5.2f} sd={sd[c]:5.2f} n={clsize[c]}' for c in range(len(clusters))]
     #print(text)
@@ -622,8 +664,8 @@ import matplotlib.patches as mpatches
 
 def draw_model(model, save=False, filenumber = None, outline=None, partition=None, extraTitle=""):
     
-    #plt.figure(figsize=(16,16))
-    plt.subplot(1, 2, 1, title="State of the nodes")
+    
+    plt.subplot(1, 2, 1, title="State of the Nodes")
     color_map = []
     intensities = []
     #pos = []
@@ -640,7 +682,7 @@ def draw_model(model, save=False, filenumber = None, outline=None, partition=Non
             intensities.append(model.graph.nodes[node]['agent'].state)
     degrees = nx.degree(model.graph)
     #plt.subplot(121)
-    nx.draw(model.graph, model.pos, node_size=[d[1] * 30 for d in degrees], linewidths=2, node_color =intensities, cmap=plt.cm.RdYlGn,  vmin=-1, vmax=1 )
+    nx.draw(model.graph, model.pos, node_size=[d[1] * 20 for d in degrees], linewidths=2, node_color =intensities, cmap=plt.cm.RdYlGn,  vmin=-1, vmax=1 )
     #plt.colorbar(mcp)
     #plt.show()
     
@@ -780,10 +822,10 @@ def avgRadialDist(models, depth, isBefore):
     plt.show()
 
 def drawAvgState(models, avg =False, pltNr=1, title="", clusterSD = False):
-    plt.xlabel("timesteps")
+    plt.xlabel("Timesteps")
     plt.ylabel("Average state")
     #mypalette = ["blue","red","green", "yellow", "orange", "violet", "grey", "grey","grey"]
-    plt.subplot(1, 2, 1, title="Avg state + SD")
+    plt.subplot(1, 2, 1, title="Average State and SD")
     
     if(not avg):
         plt.ylim((-1, 1))
@@ -804,8 +846,8 @@ def drawAvgState(models, avg =False, pltNr=1, title="", clusterSD = False):
         array = np.array(states)
         avg = array.mean(axis=0)
         std = np.array(sds).mean(axis=0)
-        plt.plot(avg, color=mypalette[pltNr-1], label=title)
-        plt.plot(std, color=col.to_rgba(mypalette[pltNr-1], 0.5))
+        p1 = plt.plot(avg, color=mypalette[pltNr-1], label=" ")
+        p2 = plt.plot(std, color=col.to_rgba(mypalette[pltNr-1], 0.5), label=" ")
         #plt.plot(avg+std, color=col.to_rgba(mypalette[pltNr-1], 0.5))
         #text = ["rand cont", "cl cont", "rand disc", "cl disc"]
         text =["grid cont", "grid disc"]
@@ -820,18 +862,19 @@ def drawAvgState(models, avg =False, pltNr=1, title="", clusterSD = False):
                 avgSds.append(avgSd)
             array = np.array(avgSds)
             avgAvgSd = array.mean(axis=0)
-            plt.plot(avgAvgSd, color=mypalette[pltNr-1], linestyle=":")
+            plt.plot(avgAvgSd, color=mypalette[pltNr-1], linestyle=":", label=title)
 
         #plt.subplot(1, 2, 2)
         #plt.ylim((0, 1))
         #plt.plot(std, color=mypalette[pltNr-1])
+        return (p1, p2)
 
 def drawCrossSection(models, pltNr = 1):
     values = []
     #mypalette = ["blue","red","green", "yellow", "orange", "violet", "grey", "grey","grey"]
     for model in models:
         values.append(model.states[-1])
-    plt.subplot(1, 2, 2, title="Density Plot of state for simulations")
+    plt.subplot(1, 2, 2, title="Density Plot of State for Simulations")
     ax = plt.gca()
     #ax.set_xscale('log')
     plt.xlim((0, 5))
@@ -873,15 +916,16 @@ def drawConvergence(variables, modelsList, pltNr = 1):
     plt.scatter(variables, endState, color=mypalette[pltNr-1])
 
 def drawClusterState(models, pltNr = 1, step=-1, subplot=1):
+    plt.title("Density of Avg State in Communities")
     if(step < 0):
-        plt.subplot(1, 3, 3, title="Avg state in clusters")
+        plt.subplot(1, 3, 3, title="Avg State after Simulation")
         states = []
         for i in range(len(models)):
             #print(models[i].clusteravg[0])
             for c in models[i].clusteravg[-1]:
                 states.append(c)
     else:
-        plt.subplot(1, 3, subplot, title="Avg state at "+ str(step))
+        plt.subplot(1, 3, subplot, title="Avg State at t="+ str(step))
         states = []
         for i in range(len(models)):
             #print(models[i].clusteravg[step])
@@ -894,6 +938,7 @@ def drawClusterState(models, pltNr = 1, step=-1, subplot=1):
     #plt.title('Density Plot of state for simulations')
     #plt.xlabel('avg state of cooperators after all time steps')
     plt.xlabel('Density')
+    plt.ylabel('State')
     #print(states)
     try:
         sns.distplot(states, hist=True, kde=True, color = mypalette[pltNr-1], vertical=True)
@@ -903,7 +948,9 @@ def drawClusterState(models, pltNr = 1, step=-1, subplot=1):
 def drawAvgNumberOfAgreeingFriends(models, pltNr = 1):
     avgNbAgreeingFriends = [model.avgNbAgreeingList for model in models]
     avgAvg = np.array(avgNbAgreeingFriends).mean(axis=0)
-    plt.title("avg agreement of friends")
+    plt.title("Average Agreement of Neighbours")
     plt.ylim((0, 1))
+    plt.xlabel("Timesteps")
+    plt.ylabel("Agreement")
     plt.plot(avgAvg, color=mypalette[pltNr-1])
 
