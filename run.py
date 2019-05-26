@@ -34,9 +34,9 @@ if __name__ ==  '__main__':
     p=Pool( processes = num_processors)
     pathfig = '~/Documents/Prosjek/Master/Comp/balanced/'
     pathdata = '~/Documents/dev/prosjektoppgave/balanced/'
-    variables = [ 0.20]#, 0.125, 0.0625 ]
+    variables = [ 0.40, 0.6, 0.8]#, 0.125, 0.0625 ]
     for v in variables:
-        filename = f'100s-addTnt-4000'
+        filename = f'100s-balanced-4000-testsw{v}'
         fg1= plt.figure("states", frameon=False, figsize=(14,7))
         fg2 = plt.figure("cross", frameon=False)
         #fg22 = plt.figure("cross2")
@@ -45,14 +45,14 @@ if __name__ ==  '__main__':
         fn22 = Path(pathfig + filename +'-crossection2.svg').expanduser()  
         fn3 = Path(pathfig + filename +'-avgagreeingfriends.svg').expanduser()        
         #fn = Path(f'~/Documents/Prosjek/Master/Comp/New/144-k10-wi{v}-50s-skew0.05-comparewi.svg').expanduser()        
-        args1 = {"continuous": True, "type" : "rand"}
-        args2 = {"continuous": True, "type" : "cl"}
-        args3 = {"continuous": False, "type" : "rand"}
-        args4 = {"continuous": False, "type" : "cl"}
-        args5 = {"continuous": True, "type" : "sf"}
-        args6 = {"continuous": False, "type" : "sf"}
-        args7 = {"continuous": True, "type" : "grid"}
-        args8 = {"continuous": False, "type" : "grid"}
+        args1 = {"continuous": True, "type" : "rand", "selfWeight": v}
+        args2 = {"continuous": True, "type" : "cl", "selfWeight": v}
+        args3 = {"continuous": False, "type" : "rand", "selfWeight": v}
+        args4 = {"continuous": False, "type" : "cl", "selfWeight": v}
+        args5 = {"continuous": True, "type" : "sf", "selfWeight": v}
+        args6 = {"continuous": False, "type" : "sf", "selfWeight": v}
+        args7 = {"continuous": True, "type" : "grid", "selfWeight": v}
+        args8 = {"continuous": False, "type" : "grid", "selfWeight": v}
         #print("rand")        
         sim1 = p.starmap(models.simulate, zip(range(s), repeat(args1)))
         #models.saveModels(sim1,  Path(pathdata +filename + "-rand-cont").expanduser())
@@ -104,6 +104,7 @@ if __name__ ==  '__main__':
         models.drawCrossSection(sim2, pltNr=2)
         models.drawCrossSection(sim3, pltNr=3)
         models.drawCrossSection(sim4, pltNr=4)
+        #models.drawCrossSection(sim5, pltNr=5)
         models.drawCrossSection(sim7, pltNr=7)
         models.drawCrossSection(sim8, pltNr=8)
         plt.draw()

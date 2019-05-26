@@ -35,7 +35,7 @@ d = 4 #degree
 s = 10
 k=4000 #10^6
 continuous = True
-skew = 0.0
+skew =0
 initSD = 0.25
 mypalette = ["blue","red","green", "orange", "violet", "grey", "magenta","cyan", "yellow"]
 randomness = 0.25
@@ -68,11 +68,12 @@ def simulate(i, newArgs):
     #simtime= time.time()
     #print(f'Time to make model: {simtime-start}s\n')
     if(args["type"] == "grid"): 
-        ind = [62, 66] 
+        ind = [64] 
     else: 
         ind = None
-    model.addInfluencers(2, index=ind)
+    #model.addInfluencers(1, index=ind)
     res = model.runSim(args["k"], clusters=True)
+    #print("Type: ", args["type"], " ", nx.info(model.graph))
     #print("assortativity: ", nx.degree_assortativity_coefficient(model.graph))
     #print("modluarity: ", community.modularity(model.partition, model.graph))
     #print(f'Time to make model: {simtime-start}s\n')
@@ -344,7 +345,7 @@ class Model:
             degrees = nx.degree(self.graph)
             largest = heapq.nlargest(number, degrees, key=itemgetter(1))
             index = [t[0] for t in largest]
-            
+            print(largest)
         for i in range(number):
             self.graph.node[index[i]]['agent'].setState(states[i % 2])
             self.graph.node[index[i]]['agent'].selfWeight = 1
