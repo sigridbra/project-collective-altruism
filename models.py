@@ -1,10 +1,7 @@
 import numpy as np
-#from operator import itemgetter
-#import heapq
 import random
 import matplotlib.pyplot as plt
 import matplotlib.colors as col
-#from networkx.drawing.nx_agraph import graphviz_layout, to_agraph
 from copy import deepcopy
 import seaborn as sns
 from statistics import stdev, mean
@@ -12,13 +9,10 @@ import imageio
 import networkx as nx
 from scipy.stats import truncnorm
 import os
-#from functools import reduce
-import time
 import community
 from operator import itemgetter
 import heapq
-import forceatlas2
-from fa2l import force_atlas2_layout
+
 
 def get_truncated_normal(mean=0, sd=1, low=0, upp=10):
     return truncnorm(
@@ -28,16 +22,16 @@ def get_truncated_normal(mean=0, sd=1, low=0, upp=10):
 
 states = [1, -1] #1 being cooperating, -1 being defecting
 defectorUtility = -0.20 
-politicalClimate= 0.20
-newPoliticalClimate = 0.20 
+politicalClimate= 0.25
+newPoliticalClimate = 0.45
 selfWeight = 0.6
 d = 4 #degree
-s = 10
-k=4000 #10^6
+s = 100 #number of sims
+k=8000  #timesteps
 continuous = True
-skew =0
+skew =-0.30
 initSD = 0.25
-mypalette = ["blue","red","green", "orange", "violet", "grey", "magenta","cyan", "yellow"]
+mypalette = ["blue","red","green", "orange", "magenta","cyan","violet", "grey", "yellow"]
 randomness = 0.25
 
 args = {"defectorUtility" : defectorUtility, 
@@ -48,16 +42,16 @@ args = {"defectorUtility" : defectorUtility,
 def simulate(i, newArgs):
     setArgs(newArgs)
     global args
-    start = time.time()
-    X = get_truncated_normal(0.5, 0.15, 0, 1)
-    
+    X = get_truncated_normal(0.5, 0.15, 0, 1) 
     S = get_truncated_normal(args["skew"], args["initSD"], -1, 1)
-    
+    ind = None
+
     if(args["type"] == "cl"):
         model =ClusteredPowerlawModel(144, args["d"], skew=args["skew"], X=X, S=S)
     elif(args["type"] == "sf"):
         model = ScaleFreeModel(144, args["d"], skew=args["skew"], X=X, S=S)
     elif(args["type"] == "grid"):
+        ind = [64]
         if(args["d"]>2): doubleDegree = True
         else:doubleDegree = False
         model = GridModel(12, skew=args["skew"], doubleDegree =doubleDegree, X=X, S=S)
@@ -65,35 +59,17 @@ def simulate(i, newArgs):
         model = RandomModel(144, args["d"], skew=args["skew"], X=X, S=S)
     else:
         model = RandomModel(144, args["d"],  X=X, S=S)
-    #simtime= time.time()
-    #print(f'Time to make model: {simtime-start}s\n')
-    if(args["type"] == "grid"): 
-        ind = [64] 
-    else: 
-        ind = None
-    #model.addInfluencers(1, index=ind)
+        
+    model.addInfluencers(newArgs["influencers"], index=ind, hub=True)
     res = model.runSim(args["k"], clusters=True)
-    #print("Type: ", args["type"], " ", nx.info(model.graph))
-    #print("assortativity: ", nx.degree_assortativity_coefficient(model.graph))
-    #print("modluarity: ", community.modularity(model.partition, model.graph))
-    #print(f'Time to make model: {simtime-start}s\n')
     return model
 
 #Helper
 def setArgs(newArgs):
     global args
-    #args = {"defectorUtility" : defectorUtility, 
-    #    "politicalClimate" : politicalClimate, 
-    #    "selfWeight": selfWeight, "d":d, 
-    #    "s": s, "k" : k, "continuous" : continuous, "type" : "cl", "skew": skew, "initSD": initSD, "newPoliticalClimate": newPoliticalClimate}
     for arg, value in newArgs.items():
         args[arg] = value
     
-
-
-def decision(probability):
-    return random.random() < probability
-
 
 def getRandomExpo():
     x = np.random.exponential(scale=0.6667)-1
@@ -119,21 +95,15 @@ class Agent:
         
         
         if(args["continuous"]):
-            #self.state = weight
-            #print("x: ", weight)
             p1 = (randomness+weight)*(1/(2*randomness))
-            #print(p1)
+
             if(p1 <0): p1 = 0
             if(p1 > 1): p1=1
-            #print("Self.state: ",self.state, ", neighbour: ", neighbour.state,", p1: ", p1)
+        
             delta = (1/2)*(-self.state+1)*(p1) - ((1/2)*(self.state+1))*(1-p1)
-            #print("delta: ", delta)
-            #print("  ")
             increment = 2*delta*abs(self.state-neighbour.state)
-            #print("increment: ", increment)
-            #print("  ")
+
             self.state += increment
-            #Truncate values    
             if(self.state > 1):
                   self.state = states[0]
             elif(self.state <-1):
@@ -146,54 +116,6 @@ class Agent:
 
     def addInteractionGiven(self):
         self.interactionsGiven +=1
-        
-    def groupConsider(self, neighbourList):
-        return
-        
-    def groupConsiderA(self, neighbour, neighboursWeight, neighbourList, continuous=False):
-        nbNeighbours = len(neighbourList)
-        nbCoop = 0
-        for n in  neighbourList:
-            if(n['agent'].state > 0): nbCoop += 1
-        p = nbCoop/nbNeighbours
-        self.interactionsReceived +=1
-        neighbour.addInteractionGiven()
-        if(neighbour.state <= 0):
-            p=1-p
-        
-        weight = self.state*selfWeight + politicalClimate + defectorUtility + p*neighboursWeight*neighbour.state #+ random.uniform(-0.25, 0.25)
-        
-        if(continuous):
-            self.state = weight
-            if(weight > 1):
-                  self.state = states[0]
-            elif(weight <-1):
-                self.state = states[1] 
-        else:
-            if(weight > 0):
-                self.state = states[0]
-            else:
-                self.state = states[1]  
-     
-    def groupConsiderB(self, impact, continuous = False):
-        print("impact: ", impact, "state: ", self.state)
-        weight = self.state*selfWeight + politicalClimate + defectorUtility + impact #+ random.uniform(-0.25, 0.25)
-        if(continuous):
-            self.state = weight
-            if(weight > 1):
-                  self.state = states[0]
-            elif(weight <-1):
-                self.state = states[1]  
-        else:
-            if(weight >= 0):
-                self.state = states[0]
-            else:
-                self.state = states[1] 
-        print("new state: ", self.state, "\n")
-
-    #def groupConsiderC(self, neighbours):
-
-    
     
     def setState(self, newState):
         if(newState >= states[1] and newState <= states[0]):
@@ -238,40 +160,6 @@ class Model:
         node.consider(chosenNeighbour, weight, self.politicalClimate)
         return nodeIndex
         
-    def groupInteract(self):
-        nodeIndex = random.randint(0, len(self.graph) - 1)
-        node = self.graph.nodes[nodeIndex]['agent']
-        
-        neighbours =  list(self.graph.adj[nodeIndex].keys())
-        if(len(neighbours) == 0):
-            return
-        
-        chosenNeighbourIndex = neighbours[random.randint(0, len(neighbours)-1)]
-        chosenNeighbour = self.graph.nodes[chosenNeighbourIndex]['agent']
-        
-        weight = self.graph[nodeIndex][chosenNeighbourIndex]['weight']
-        
-        neighbourList = [self.graph.nodes[i] for i in neighbours]
-        node.groupConsiderA(chosenNeighbour, weight, neighbourList)
-        
-    def groupInteractB(self):
-        nodeIndex = random.randint(0, len(self.graph) - 1)
-        node = self.graph.nodes[nodeIndex]['agent']
-        print("Node: ", nodeIndex)
-        neighbours =  list(self.graph.adj[nodeIndex].keys())
-        print(neighbours)
-        if(len(neighbours) == 0):
-            return
-        
-        impact = 0
-        for n in neighbours:
-            neighbour = self.graph.nodes[n]['agent']
-            weight = self.graph[nodeIndex][n]['weight']
-            impact += neighbour.state * weight
-        
-        impact = impact/len(neighbours)
-        
-        node.groupConsiderB(impact)
 
     def findNbAgreeingFriends(self, nodeIdx = None):
         global args
@@ -339,37 +227,26 @@ class Model:
             
         return mean(self.NbAgreeingFriends)
     
-    def addInfluencers(self, number, index = None):
-        
+    def addInfluencers(self, number = 0, index = None, hub = True):
+        if(number == 0):
+            return
         if(index == None):
             degrees = nx.degree(self.graph)
-            largest = heapq.nlargest(number, degrees, key=itemgetter(1))
-            index = [t[0] for t in largest]
-            print(largest)
+            if(hub):
+                largest = heapq.nlargest(number, degrees, key=itemgetter(1))
+                index = [t[0] for t in largest]
+                
+
+            else:
+                index = [p[0]  for p in degrees if p[1] == d*2]
+                if(len(index) == 0 or len(index) < number ):
+                    extra = [p[0]  for p in degrees if p[1] == d*2-1]
+                    index = index + extra
+            #print(largest)
         for i in range(number):
             self.graph.node[index[i]]['agent'].setState(states[i % 2])
             self.graph.node[index[i]]['agent'].selfWeight = 1
             
-
-    def getAvgNumberOfDefectorNeigh(self):
-        defectorFriendsList = []
-        defectorNeighboursList = []
-        for node in self.graph:
-            agreeingNeighbours = 0
-            neighbours = list(self.graph.adj[node])
-            for neighbourIndex in neighbours:
-                if self.graph.nodes[neighbourIndex]['agent'].state == self.graph.nodes[node]['agent'].state:
-                    agreeingNeighbours += 1
-            if self.graph.nodes[node]['agent'].state== 1:
-                defectorNeighboursList.append(agreeingNeighbours) #defectorNeighboursList.append(agreeingNeighbours/len(neighbours))
-            else:
-                defectorFriendsList.append(agreeingNeighbours)
-        
-        defectoravg = mean(defectorFriendsList)
-        cooperatoravg =mean(defectorNeighboursList)
-        defectorSTD = stdev(defectorFriendsList)
-        cooperatorSTD =stdev(defectorNeighboursList)
-        return(defectoravg, cooperatoravg, defectorSTD, cooperatorSTD)
                 
     
     def countCooperatorRatio(self):
@@ -396,7 +273,7 @@ class Model:
 
     def getInitialState(self):
         global args
-        if(args['continuous'] != True):
+        if(args['continuous'] != True): 
             state = states[random.randint(0,1)]
         else:   
         #    #state = random.uniform(-1, 1)s
@@ -427,13 +304,15 @@ class Model:
     
         #create list of number of agreeing friends
         self.findNbAgreeingFriends()
+        self.avgNbAgreeingList.append(mean(self.NbAgreeingFriends))
         
 
         for i in range(k):
-            #if(groupInteract): self.groupInteractB()
-            #else:
-            #print("step: ", i)
-            nodeIndex = self.interact()
+            if(groupInteract): 
+                nodeIndex = self.groupInteractB()
+            else:
+                #print("step: ", i)
+                nodeIndex = self.interact()
             ratio = self.countCooperatorRatio()
             self.ratio.append(ratio)
             (state, sd) = self.getAvgState()
@@ -468,13 +347,6 @@ class Model:
                 draw_model(self, True, i, extraTitle = f'  avg state: {self.states[-1]:1.2f} agreement: {self.avgNbAgreeingList[-1]:1.2f}')
                 filenames.append("plot" + str(i) +".png")
                 
-            #if(i % 10 == 0):
-                #a = random.randint(0,n)
-                #b = random.randint(0,n)
-                #while(a==b):
-                    #b = random.randint(0,n)
-                    #weight = random.uniform(0.1, 0.9)
-                    #model.graph.add_edge(a, b, weight = weight)
         if(gifname != None):
             images = []
             for filename in filenames:
@@ -511,8 +383,8 @@ class Model:
                 self.graph.node[i]['agent'].state = states[1]
             #self.pos = nx.kamada_kawai_layout(self.graph)
         #self.pos = forceatlas2.forceatlas2_networkx_layout(self.graph)
-        self.pos = force_atlas2_layout(self.graph)
-        #self.pos = nx.spring_layout(self.graph)
+        #self.pos = force_atlas2_layout(self.graph)
+        self.pos = nx.spring_layout(self.graph)
 
 class GridModel(Model):
     def __init__(self, n, skew=0, doubleDegree=False, **kwargs):
@@ -526,9 +398,15 @@ class GridModel(Model):
                 if(i!=0):
                     weight = self.getFriendshipWeight()
                     self.graph.add_edge(i*n+j, (i-1)*n+j, weight = weight)
+                if(i==n-1):
+                    weight = self.getFriendshipWeight()
+                    self.graph.add_edge(i*n+j, j, weight = weight)
                 if(j!=0):
                     weight = self.getFriendshipWeight()
                     self.graph.add_edge(i*n+j, i*n+j-1, weight = weight)
+                if(j==n-1):
+                    weight = self.getFriendshipWeight()
+                    self.graph.add_edge(i*n+j, i*n, weight = weight)
         if(doubleDegree):
             for i in range(n):
                 for j in range(n):
@@ -538,6 +416,37 @@ class GridModel(Model):
                     if(i!=0 and j!=(n-1)):
                         weight = self.getFriendshipWeight()
                         self.graph.add_edge(i*n+j, (i-1)*n+j+1, weight = weight)
+                    """
+                    if( i != n-1 and j!= n-1):
+                        weight = self.getFriendshipWeight()
+                        self.graph.add_edge(i*n+j, (i+1)*n+j+1, weight = weight)
+                    if(j != 0 and i != n-i):
+                        weight = self.getFriendshipWeight()
+                        self.graph.add_edge(i*n+j, (i+1)*n+j-1, weight = weight)"""
+
+                    if(j == n-1):
+                        if(i == n-1):
+                            weight = self.getFriendshipWeight()
+                            self.graph.add_edge(i*n+j, 0, weight = weight)
+                        else:
+                            weight = self.getFriendshipWeight()
+                            self.graph.add_edge(i*n+j, (i+1)*n, weight = weight)
+                        if(i == 0):
+                            weight = self.getFriendshipWeight()
+                            self.graph.add_edge(i*n+j, (n-1)*n, weight = weight)
+                        else:
+                            weight = self.getFriendshipWeight()
+                            self.graph.add_edge(i*n+j, (i-1)*n, weight = weight)
+                    if( i == n-1):
+                        if( j != n-1):
+                            weight = self.getFriendshipWeight()
+                            self.graph.add_edge(i*n+j, j+1, weight = weight)
+                        if(j != 0):
+                            weight = self.getFriendshipWeight()
+                            self.graph.add_edge(i*n+j, j-1, weight = weight)
+                        else: 
+                            weight = self.getFriendshipWeight()
+                            self.graph.add_edge(i*n+j, (n-1), weight = weight)
         if(skew != 0 and not args["continuous"] ): 
                 num = round(abs(skew)*len(self.graph.nodes))
                 indexes = random.sample(range(len(self.graph.nodes)), num)
@@ -566,22 +475,6 @@ class RandomModel(Model):
         
         self.graph =nx.erdos_renyi_graph(n, p)
         self.populateModel(n, skew)
-    
-class KarateModel(Model):
-    def __init__(self, **kwargs):
-        #m is avg degree/2
-        super().__init__(**kwargs)
-        
-        self.graph =nx.karate_club_graph()
-        for n in range (len(self.graph.nodes)):
-                agent1 = Agent(self.getInitialState())
-                self.graph.nodes[n]['agent'] = agent1
-        edges = self.graph.edges() 
-        for e in edges: 
-            weight=self.getFriendshipWeight()
-            
-            self.graph[e[0]][e[1]]['weight'] = weight 
-        self.pos = nx.spring_layout(self.graph)
 
 import dill
 
@@ -644,11 +537,11 @@ def drawClusteredModel(model):
     edge_col = []
     for node in model.graph.nodes():
         edge_col.append(mypalette[model.graph.node[node]["louvain-val"] % 9 ])
-    plt.figure(figsize=(16,16))
+    #plt.figure(figsize=(16,16))
     plt.subplot(1, 2, 2, title="Cluster Membership")
     nx.draw(model.graph, model.pos, node_size=[d[1] * 20 for d in degrees], node_color =edge_col)
     (clusters, sd, clsize) = findAvgStateInClusters(model, part= partition)
-    text = [f'x={clusters[c]:5.2f} sd={sd[c]:5.2f} n={clsize[c]}' for c in range(len(clusters))]
+    text = [f'avg={clusters[c]:5.2f} sd={sd[c]:5.2f} n={clsize[c]}' for c in range(len(clusters))]
     #print(text)
     ax = plt.gca()
     handles = [mpatches.Patch(color=mypalette[c], label=text[c]) for c in range(len(text))]
@@ -665,8 +558,8 @@ import matplotlib.patches as mpatches
 
 def draw_model(model, save=False, filenumber = None, outline=None, partition=None, extraTitle=""):
     
-    
-    plt.subplot(1, 2, 1, title="State of the Nodes")
+    #plt.figure(figsize=(4, 4))
+    #plt.subplot(1, 2, 1, title="State of the Nodes")
     color_map = []
     intensities = []
     #pos = []
@@ -683,7 +576,10 @@ def draw_model(model, save=False, filenumber = None, outline=None, partition=Non
             intensities.append(model.graph.nodes[node]['agent'].state)
     degrees = nx.degree(model.graph)
     #plt.subplot(121)
-    nx.draw(model.graph, model.pos, node_size=[d[1] * 20 for d in degrees], linewidths=2, node_color =intensities, cmap=plt.cm.RdYlGn,  vmin=-1, vmax=1 )
+    nx.draw(model.graph, model.pos, node_size=[d[1] * 30 for d in degrees], linewidths=2, node_color =intensities, cmap=plt.cm.RdYlGn,  vmin=-1, vmax=1 )
+    #sm = plt.cm.ScalarMappable(cmap=plt.cm.RdYlGn, norm=plt.Normalize(vmin=-1, vmax=1))
+    #sm.set_array([])
+    #cbar = plt.colorbar(sm)
     #plt.colorbar(mcp)
     #plt.show()
     
@@ -704,127 +600,10 @@ def draw_model(model, save=False, filenumber = None, outline=None, partition=Non
         plt.savefig("plot" + str(filenumber) +".png", bbox_inches="tight")
         plt.close('all')
 
-def radialDist(model, depth, isBefore):
-    DefectorValues = [[0 for i in range(depth)] for j in range(len(model.graph))]
-    CooperatorValues = [[0 for i in range(depth)] for j in range(len(model.graph))]
-    
-    for nodeIdx in model.graph:
-        neighbours = list(model.graph.adj[nodeIdx])
-        isCooperator = model.graph.nodes[nodeIdx]['agent'].state > 0
-        parent = [nodeIdx]
-        for d in range(depth):
-            nextLevelNeighs = set([])
-            for n in neighbours:
-                nextLevelNeighs.update(list(model.graph.adj[n]))
-                if(model.graph.nodes[n]['agent'].state > 0 and isCooperator):
-                    CooperatorValues[nodeIdx][d] += 1
-                elif(model.graph.nodes[n]['agent'].state <= 0 and not isCooperator): 
-                    DefectorValues[nodeIdx][d] += 1
-            CooperatorValues[nodeIdx][d] = CooperatorValues[nodeIdx][d]/len(neighbours)
-            DefectorValues[nodeIdx][d] = DefectorValues[nodeIdx][d]/len(neighbours)
-            
-            #make sure the parent level isn't checked again
-            for n in parent:
-                nextLevelNeighs.discard(n) 
-            parent = neighbours
-            neighbours = nextLevelNeighs
-     
-    cooperatorRatio = model.countCooperatorRatio()
-    
-    cooperatorRes = []
-    defectorRes = []
-    for col in range(depth):
-        coopSumRatios = 0
-        defectSumRatios = 0
-        for row in range(len(CooperatorValues)):
-            coopSumRatios += CooperatorValues[row][col]
-            defectSumRatios += DefectorValues[row][col]
-        cooperatorRes.append(np.array(coopSumRatios)/(len(model.graph)*cooperatorRatio*cooperatorRatio))
-        defectorRes.append(np.array(defectSumRatios)/(len(model.graph)*(1-cooperatorRatio)*(1-cooperatorRatio)))
-
-    if isBefore:
-        intensity = 0.5
-    else:
-        intensity = 1
-    plt.xlabel("Distance from the nodes")
-    plt.ylabel("Normalised ratio of agreein neighbours")
-    plt.title("Distance distribution function")
-    plt.ylim((0, 2.5))
-    plt.plot(range(1, len(cooperatorRes)+1), cooperatorRes, color=((23/255, 104/255, 37/255, intensity)))     
-    plt.plot(range(1, len(cooperatorRes)+1), defectorRes, color=((109/255, 10/255, 10/255, intensity))) 
-
-def avgRadialDist(models, depth, isBefore):
-    DefectorList = []
-    CooperatorList = []
-    
-    for model in models :
-        DefectorValues = [[0 for i in range(depth)] for j in range(len(model.graph))]
-        CooperatorValues = [[0 for i in range(depth)] for j in range(len(model.graph))]
-
-        for nodeIdx in model.graph:
-            neighbours = list(model.graph.adj[nodeIdx])
-            isCooperator = model.graph.nodes[nodeIdx]['agent'].state > 0
-            parent = [nodeIdx]
-            for d in range(depth):
-                nextLevelNeighs = set([])
-                for n in neighbours:
-                    nextLevelNeighs.update(list(model.graph.adj[n]))
-                    if(model.graph.nodes[n]['agent'].state > 0 and isCooperator):
-                        CooperatorValues[nodeIdx][d] += 1
-                    elif(model.graph.nodes[n]['agent'].state <= 0 and not isCooperator): 
-                        DefectorValues[nodeIdx][d] += 1
-                if(len(neighbours) == 0):
-                    break
-                CooperatorValues[nodeIdx][d] = CooperatorValues[nodeIdx][d]/len(neighbours)
-                DefectorValues[nodeIdx][d] = DefectorValues[nodeIdx][d]/len(neighbours)
-
-                #make sure the parent level isn't checked again
-                for n in parent:
-                    nextLevelNeighs.discard(n) 
-                parent = neighbours
-                neighbours = nextLevelNeighs
-
-        cooperatorRatio = model.countCooperatorRatio()
-
-        cooperatorRes = []
-        defectorRes = []
-        for col in range(depth):
-            coopSumRatios = 0
-            defectSumRatios = 0
-            for row in range(len(CooperatorValues)):
-                coopSumRatios += CooperatorValues[row][col]
-                defectSumRatios += DefectorValues[row][col]
-            if(cooperatorRatio == 0):
-                cooperatorRes.append(1)
-            else:
-                cooperatorRes.append(np.array(coopSumRatios)/(len(model.graph)*cooperatorRatio*cooperatorRatio))
-            if(cooperatorRatio == 1):
-                defectorRes.append(1)
-            else:
-                defectorRes.append(np.array(defectSumRatios)/(len(model.graph)*(1-cooperatorRatio)*(1-cooperatorRatio)))
-        DefectorList.append( defectorRes)
-        CooperatorList.append( cooperatorRes)
-    data = np.array(DefectorList)
-    avgDefector = np.average(data, axis=0)
-    data = np.array(CooperatorList)
-    avgCooperator = np.average(data, axis=0)
-            
-    if isBefore:
-        intensity = 0.5
-    else:
-        intensity = 1
-    plt.xlabel("Distance from the nodes")
-    plt.ylabel("Normalised ratio of agreein neighbours")
-    plt.title("Distance distribution function")
-    plt.ylim((0, 2.5))
-    plt.xlim((0.5, 5.5))
-    plt.plot(range(1, len(avgDefector)+1), avgCooperator, color=((23/255, 104/255, 37/255, intensity)))     
-    plt.plot(range(1, len(avgDefector)+1), avgDefector, color=((109/255, 10/255, 10/255, intensity))) 
-    plt.show()
 
 def drawAvgState(models, avg =False, pltNr=1, title="", clusterSD = False):
     plt.xlabel("Timesteps")
-    plt.ylabel("Average state")
+    plt.ylabel("Average State")
     #mypalette = ["blue","red","green", "yellow", "orange", "violet", "grey", "grey","grey"]
     plt.subplot(1, 2, 1, title="Average State and SD")
     
@@ -883,6 +662,7 @@ def drawCrossSection(models, pltNr = 1):
     #plt.title('Density Plot of state for simulations')
     #plt.xlabel('avg state of cooperators after all time steps')
     plt.xlabel('Density')
+    #plt.scatter(range(len(values)), values.sort(), color = mypalette[pltNr-1])
     try:
         sns.distplot(values, hist=False, kde=True, color = mypalette[pltNr-1], vertical=True)
     except:

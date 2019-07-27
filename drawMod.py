@@ -31,21 +31,38 @@ plt.rcParams["savefig.directory"] = "Master/Comp/Week19_2"
 if __name__ ==  '__main__': 
     start = time.time()
     
-    fn1 = Path('~/Documents/Prosjek/Master/Comp/balanced/balanced-144-d8-.svg').expanduser()
-    fn2 = Path('~/Documents/Prosjek/Master/Comp/balanced/balanced-144-d8-clusters.svg').expanduser()
-    fn3 = Path('~/Documents/Prosjek/Master/Comp/balanced/balanced-144-d8-agreeingfriends.svg').expanduser()
+    fn1 = Path('~/Documents/Prosjek/Master/Comp/balanced/exModel-2.svg').expanduser()
+    fn2 = Path('~/Documents/Prosjek/Master/Comp/balanced/exModel-2-clusters.svg').expanduser()
+    fn3 = Path('~/Documents/Prosjek/Master/Comp/balanced/exModel-2-agreeingfriends.svg').expanduser()
     #fg = plt.figure()
-    model = models.simulate(0, {"type": "grid", "continuous":False, "d":4, "k":1, "skew":0.0, "influencers":0})#"initSD": 0.25})
+    fnbefore = Path('~/Documents/Prosjek/Master/Comp/balanced/exModel-before3.svg').expanduser()
+    fnafter = Path('~/Documents/Prosjek/Master/Comp/balanced/exModel-after3.svg').expanduser()
+
+    model = models.simulate(0, {"type": "cl", "continuous":True, "d":3, "k":1, "skew":0.0, "influencers":1})#"initSD": 0.25})
     print("degree: ", nx.info(model.graph))
-    
+    #bf = plt.figure("before", figsize=(14,7))
+    #bf.subplots(nrows=1,ncols=2)
+
+    #models.drawClusteredModel(model)
+    #plt.draw()
+    #plt.show()
+    #bf.savefig(fnbefore)
+
     #fg.clear()
-    model.runSim(100, clusters=True)
-    #fg = plt.figure(figsize=(14,7))
+    model.runSim(500, clusters=True)
+
+    af = plt.figure("after", figsize=(10,10))
+    #af.subplots(nrows=1,ncols=2)
     models.draw_model(model)
     plt.show()
+    af.savefig(fnafter)
+
+    #fg = plt.figure(figsize=(14,7))
+    #models.draw_model(model)
+    #plt.show()
     #fn = Path('~/Documents/Prosjek/Master/Figurer/clustered2.svg').expanduser()
     #fg.savefig(fn)
-    """
+    
     fg1= plt.figure("states", figsize=(14,7))
     fg1.subplots(nrows=1, ncols=2 )
     models.drawAvgState([model], clusterSD=True)
@@ -62,7 +79,7 @@ if __name__ ==  '__main__':
     fg3 = plt.figure("agreeingfriends")
     models.drawAvgNumberOfAgreeingFriends([model], pltNr=7)
     plt.draw()
-    fg3.savefig(fn3)"""
+    fg3.savefig(fn3)
     end = time.time()
     mins = (end - start) / 60
     sec = (end - start) % 60

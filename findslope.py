@@ -27,7 +27,7 @@ pathdata = '~/Documents/dev/prosjektoppgave/Week20/'
 variables = [ 0.25, 0.35, 0.45, 0.55]
 resSlopes = [ [] for i in range(6) ]
 for i, v in enumerate(variables):
-    filename = f'changepu-pu0.05-skew0.4-rd0.25-newpu{v}-30s-3000steps'
+    filename = f'changepu-pu0.05-skew0.1-rd0.25-newpu{v}-30s-3000steps'
     sims = []
     sims.append(models.loadModels(Path(pathdata +filename + "-rand-cont").expanduser()))
     sims.append(models.loadModels(Path(pathdata +filename + "-cl-cont").expanduser()))      
@@ -41,18 +41,28 @@ for i, v in enumerate(variables):
         for model in sim:
 
             try:
-                index = next(ind for ind, val in enumerate(model.states) if val > 0.95)
+                lowIndex = next(ind for ind, val in enumerate(model.states) if val > 0)
             except: 
-                index = 2999
-            slope = (model.states[index] - model.states[550])/(index - 550)
+                print("Never above 0 for ", v)
+                lowIndex = 500
+                continue
+
+            try:
+                highIndex = next(ind for ind, val in enumerate(model.states) if val > 0.4)
+            except: 
+                print("never above 0.4 for ", v)
+                highIndex = 2999
+
+            slope = (model.states[highIndex] - model.states[lowIndex])/(highIndex - lowIndex)
             slopes.append(slope)
         slope = mean(slopes)
         
-        resSlopes[i].append(slope)
+        resSlopes[j].append(slope)
+
 results = []
 #print(resSlopes)
-for i in range(6):
-    results.append([resSlopes[x][i] for x in range(len(variables))])
+#for i in range(6):
+#    results.append([resSlopes[x][i] for x in range(len(variables))])
 #print(results)
 plt.figure()
 #plt.ylim((0, 0.002))
@@ -60,8 +70,8 @@ plt.xlabel("Political Climate after 500")
 plt.ylabel("Slope")
 plt.title("Slope vs political climate after 500 for different models")
 for i in range(6):
-    print(results[i])
-    plt.scatter(variables, results[i], color=mypalette[i])    
+    #print(results[i])
+    plt.scatter(variables, resSlopes[i], color=mypalette[i])    
 #print(results)
 plt.draw()
 plt.show()
