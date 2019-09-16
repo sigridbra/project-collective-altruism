@@ -22,14 +22,14 @@ def get_truncated_normal(mean=0, sd=1, low=0, upp=10):
 
 states = [1, -1] #1 being cooperating, -1 being defecting
 defectorUtility = -0.20 
-politicalClimate= 0.25
-newPoliticalClimate = 0.45
+politicalClimate= 0.2
+newPoliticalClimate = 0.2
 selfWeight = 0.6
 d = 4 #degree
 s = 100 #number of sims
-k=8000  #timesteps
+k=4000  #timesteps
 continuous = True
-skew =-0.30
+skew =0
 initSD = 0.25
 mypalette = ["blue","red","green", "orange", "magenta","cyan","violet", "grey", "yellow"]
 randomness = 0.25
@@ -51,7 +51,7 @@ def simulate(i, newArgs):
     elif(args["type"] == "sf"):
         model = ScaleFreeModel(144, args["d"], skew=args["skew"], X=X, S=S)
     elif(args["type"] == "grid"):
-        ind = [64]
+        ind = [10,64, 82]
         if(args["d"]>2): doubleDegree = True
         else:doubleDegree = False
         model = GridModel(12, skew=args["skew"], doubleDegree =doubleDegree, X=X, S=S)
@@ -60,7 +60,7 @@ def simulate(i, newArgs):
     else:
         model = RandomModel(144, args["d"],  X=X, S=S)
         
-    model.addInfluencers(newArgs["influencers"], index=ind, hub=True)
+    model.addInfluencers(newArgs["influencers"], index=ind, hub=False, allSame=False)
     res = model.runSim(args["k"], clusters=True)
     return model
 
@@ -227,7 +227,7 @@ class Model:
             
         return mean(self.NbAgreeingFriends)
     
-    def addInfluencers(self, number = 0, index = None, hub = True):
+    def addInfluencers(self, number = 0, index = None, hub = True, allSame =False):
         if(number == 0):
             return
         if(index == None):
@@ -244,7 +244,10 @@ class Model:
                     index = index + extra
             #print(largest)
         for i in range(number):
-            self.graph.node[index[i]]['agent'].setState(states[i % 2])
+            if(allSame):
+                self.graph.node[index[i]]['agent'].setState(states[0])
+            else:
+                self.graph.node[index[i]]['agent'].setState(states[i % 2])
             self.graph.node[index[i]]['agent'].selfWeight = 1
             
                 
@@ -630,9 +633,9 @@ def drawAvgState(models, avg =False, pltNr=1, title="", clusterSD = False):
         p2 = plt.plot(std, color=col.to_rgba(mypalette[pltNr-1], 0.5), label=" ")
         #plt.plot(avg+std, color=col.to_rgba(mypalette[pltNr-1], 0.5))
         #text = ["rand cont", "cl cont", "rand disc", "cl disc"]
-        text =["grid cont", "grid disc"]
-        #handles = [mpatches.Patch(color=mypalette[c+6], label=text[c]) for c in range(len(text))]
-        #plt.legend(handles=handles)
+        text =["Scale Free", "Grid"]
+        handles = [mpatches.Patch(color=mypalette[c], label=text[c]) for c in range(len(text))]
+        plt.legend(handles=handles)
         if(clusterSD):
             avgSds = []
             for mod in models:

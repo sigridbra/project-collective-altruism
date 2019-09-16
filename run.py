@@ -23,21 +23,21 @@ import dill
 
 #Constants and Variables
 plt.rcParams["svg.fonttype"] = "none"
-s =30 #10^3 
+s =50 #10^3 
 if __name__ ==  '__main__': 
     num_processors = 7 #Prosesser kan endres 
     start = time.time()
     p=Pool( processes = num_processors)
     
     # ---------- TIL MAGNUS: ENDRE PATH HER -----------
-    pathfig = '~/Documents/Prosjek/Master/Comp/unbalanced/'
-    pathdata = '~/Documents/dev/prosjektoppgave/unbalanced/'
+    pathfig = '~/Documents/Prosjek/Master/Paper/SecondRound/'
+    pathdata = '~/Documents/dev/prosjektoppgave/paper/'
 
 
     variables = [ -0.8]#, 0.125, 0.0625 ]
     for v in variables:
         print("Started variable: ", v)
-        filename = f'3s-8000-sw0_6-changepu045-at500-skew03'
+        filename = f'sim2c-50s-4000-sw0_6-2opposing-zealots'
         fg1= plt.figure("states", frameon=False, figsize=(14,7))
         fg2 = plt.figure("cross", frameon=False)
         fg22 = plt.figure("cross2", frameon=False)
@@ -49,18 +49,18 @@ if __name__ ==  '__main__':
         fn3 = Path(pathfig + filename +'-avgagreeingfriends.svg').expanduser()        
         #fn = Path(f'~/Documents/Prosjek/Master/Comp/New/144-k10-wi{v}-50s-skew0.05-comparewi.svg').expanduser()        
         argList = []
-        argList.append({"continuous": True, "type" : "rand", "influencers":0})
-        argList.append({"continuous": True, "type" : "cl", "influencers":0})
-        argList.append({"continuous": False, "type" : "rand", "influencers":0})
-        argList.append({"continuous": False, "type" : "cl", "influencers":0})
-        #argList.append({"continuous": True, "type" : "sf", "influencers":0})
+        #argList.append({"continuous": True, "type" : "rand", "influencers":0})
+        #argList.append({"continuous": True, "type" : "cl", "influencers":0})
+        #argList.append({"continuous": False, "type" : "rand", "influencers":0})
+        #argList.append({"continuous": False, "type" : "cl", "influencers":0})
+        argList.append({"continuous": True, "type" : "sf", "influencers":2})
         #argList.append({"continuous": False, "type" : "sf", "influencers":0})
-        argList.append({"continuous": True, "type" : "grid", "influencers":0})
-        argList.append({"continuous": False, "type" : "grid", "influencers":0})
+        argList.append({"continuous": True, "type" : "grid", "influencers":2})
+        #argList.append({"continuous": False, "type" : "grid", "influencers":0})
         #print("rand")
-        titleList = ["Random C", "Clustered C", "Grid C", "Random D", "Clustered D", "Grid D"]        
-        filenameList = ["-rand-cont", "-cl-cont", "-grid-cont", "-rand-disc", "-cl-disc", "-grid-disc"]
-        for i in range(6):
+        titleList = ["Scale Free", "Grid"]        
+        filenameList = ["-sf", "-grid"]
+        for i in range(len(argList)):
             sim = p.starmap(models.simulate, zip(range(s), repeat(argList[i])))
             plt.figure("states")
             fg1.subplots(nrows=1, ncols=2 )
@@ -91,17 +91,19 @@ if __name__ ==  '__main__':
         #plt.show()
         """current_handles, current_labels = fg1.gca().get_legend_handles_labels()
         print(current_labels)
-        avgs_handles = [current_handles[i*3] for i in range(6)]
-        avgs_labels = [ current_labels[i*3] for i in range(6)]
-        sd_handles = [current_handles[i*3 + 1] for i in range(6)]
-        sd_labels = [ current_labels[i*3+1] for i in range(6)]
-        cl_handles = [current_handles[i*3+2] for i in range(6)]
-        cl_labels = [ current_labels[i*3+2] for i in range(6)]
-        labels = [" " for i in range(12)]+ titleList
-        handles = avgs_handles + sd_handles + cl_handles"""
-        #labels = avgs_labels + sd_labels + cl_labels
+        avgs_handles = [current_handles[i*3] for i in range(2)]
+        avgs_labels = [ current_labels[i*3] for i in range(2)]
+        sd_handles = [current_handles[i*3 + 1] for i in range(2)]
+        sd_labels = [ current_labels[i*3+1] for i in range(2)]
+        cl_handles = [current_handles[i*3+2] for i in range(2)]
+        cl_labels = [ current_labels[i*3+2] for i in range(2)]
+        labels = [" " for i in range(4)]+ titleList
+        handles = avgs_handles + sd_handles + cl_handles
+        labels = avgs_labels + sd_labels + cl_labels
         
-        #plt.legend(handles, labels, ncol = 3,  fontsize='medium', columnspacing=0.25, handlelength=1, title="Avg    SD    Com.")
+        plt.legend(handles, labels, ncol = 3,  fontsize='medium', columnspacing=0.25, handlelength=1, title="Avg    SD    Com.")
+        """
+        plt.legend()
         fg1.savefig(fn1)
         plt.clf()
         plt.close()
