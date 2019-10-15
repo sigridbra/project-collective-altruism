@@ -19,19 +19,20 @@ import os
 from pathlib import Path
 import dill
 
-#matplotlib.use('Agg')
-
-#Constants and Variables
-plt.rcParams["svg.fonttype"] = "none"
-s =50 #10^3 
+ 
 if __name__ ==  '__main__': 
-    num_processors = 7 #Prosesser kan endres 
+    plt.rcParams["svg.fonttype"] = "none"
+
+    #Constants and Variables
+    numberOfSimulations =5 #10^3
+    numberOfProcessors = 7 #Prosesser kan endres
+
     start = time.time()
-    p=Pool( processes = num_processors)
+    pool=Pool( processes = numberOfProcessors)
     
-    # ---------- TIL MAGNUS: ENDRE PATH HER -----------
-    pathfig = '~/Documents/Prosjek/Master/Paper/SecondRound/'
-    pathdata = '~/Documents/dev/prosjektoppgave/paper/'
+    # ----------PATH TO SAVE FIGURES AND DATA-----------
+    pathFig = '~/Documents/Prosjek/Master/Paper/SecondRound/'
+    pathData = '~/Documents/dev/prosjektoppgave/paper/'
 
 
     variables = [ -0.8]#, 0.125, 0.0625 ]
@@ -43,10 +44,10 @@ if __name__ ==  '__main__':
         fg22 = plt.figure("cross2", frameon=False)
         fg3 = plt.figure("agreeingfriends", frameon=False)
         #fg22 = plt.figure("cross2")
-        fn1 = Path(pathfig + filename + '.svg').expanduser()
-        fn2 = Path(pathfig + filename +'-crossection.svg').expanduser()  
-        fn22 = Path(pathfig + filename +'-crossection2.svg').expanduser()  
-        fn3 = Path(pathfig + filename +'-avgagreeingfriends.svg').expanduser()        
+        fn1 = Path(pathFig + filename + '.svg').expanduser()
+        fn2 = Path(pathFig + filename +'-crossection.svg').expanduser()  
+        fn22 = Path(pathFig + filename +'-crossection2.svg').expanduser()  
+        fn3 = Path(pathFig + filename +'-avgagreeingfriends.svg').expanduser()        
         #fn = Path(f'~/Documents/Prosjek/Master/Comp/New/144-k10-wi{v}-50s-skew0.05-comparewi.svg').expanduser()        
         argList = []
         #argList.append({"continuous": True, "type" : "rand", "influencers":0})
@@ -61,7 +62,7 @@ if __name__ ==  '__main__':
         titleList = ["Scale Free", "Grid"]        
         filenameList = ["-sf", "-grid"]
         for i in range(len(argList)):
-            sim = p.starmap(models.simulate, zip(range(s), repeat(argList[i])))
+            sim = pool.starmap(models.simulate, zip(range(numberOfSimulations), repeat(argList[i])))
             plt.figure("states")
             fg1.subplots(nrows=1, ncols=2 )
             models.drawAvgState(sim, avg=True, pltNr=i+1, title=titleList[i], clusterSD=True)
@@ -83,7 +84,7 @@ if __name__ ==  '__main__':
             models.drawAvgNumberOfAgreeingFriends(sim, pltNr=i+1)
             plt.draw()
             print("Finished with ", titleList[i])
-            #models.saveModels(sim, Path(pathdata +filename + filenameList[i]).expanduser())
+            #models.saveModels(sim, Path(pathData +filename + filenameList[i]).expanduser())
         simtime= time.time()
         print(f'Time to simulate: {simtime-start}s\n')
         

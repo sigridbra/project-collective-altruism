@@ -12,22 +12,36 @@ import os
 import community
 from operator import itemgetter
 import heapq
+from IPython.display import Image
+import matplotlib.patches as mpatches
+import dill
 
+#Helper functions
 
 def get_truncated_normal(mean=0, sd=1, low=0, upp=10):
     return truncnorm(
         (low - mean) / sd, (upp - mean) / sd, loc=mean, scale=sd)
 
+def setArgs(newArgs):
+    global args
+    for arg, value in newArgs.items():
+        args[arg] = value
+    
+def getRandomExpo():
+    x = np.random.exponential(scale=0.6667)-1
+    if(x>1): return 1
+    elif (x< -1): return -1
+    return x
+
 #Constants and Variables
 
-states = [1, -1] #1 being cooperating, -1 being defecting
+STATES = [1, -1] #1 being cooperating, -1 being defecting
 defectorUtility = -0.20 
 politicalClimate= 0.2
 newPoliticalClimate = 0.2
-selfWeight = 0.6
-d = 4 #degree
-s = 100 #number of sims
-k=4000  #timesteps
+stubbornness = 0.6
+degree = 4 
+timesteps=4000  #timesteps
 continuous = True
 skew =0
 initSD = 0.25
@@ -36,63 +50,47 @@ randomness = 0.25
 
 args = {"defectorUtility" : defectorUtility, 
         "politicalClimate" : politicalClimate, 
-        "selfWeight": selfWeight, "d":d, 
-        "s": s, "k" : k, "continuous" : continuous, "type" : "cl", "skew": skew, "initSD": initSD, "newPoliticalClimate": newPoliticalClimate}
+        "stubbornness": stubbornness, "degree":degree, "timesteps" : timesteps, "continuous" : continuous, "type" : "cl", "skew": skew, "initSD": initSD, "newPoliticalClimate": newPoliticalClimate}
 
 def simulate(i, newArgs):
     setArgs(newArgs)
     global args
-    X = get_truncated_normal(0.5, 0.15, 0, 1) 
-    S = get_truncated_normal(args["skew"], args["initSD"], -1, 1)
+    friendshipWeightGenerator = get_truncated_normal(0.5, 0.15, 0, 1) 
+    initialStateGenerator = get_truncated_normal(args["skew"], args["initSD"], -1, 1)
     ind = None
 
     if(args["type"] == "cl"):
-        model =ClusteredPowerlawModel(144, args["d"], skew=args["skew"], X=X, S=S)
+        model =ClusteredPowerlawModel(144, args["degree"], skew=args["skew"], friendshipWeightGenerator=friendshipWeightGenerator, initialStateGenerator=initialStateGenerator)
     elif(args["type"] == "sf"):
-        model = ScaleFreeModel(144, args["d"], skew=args["skew"], X=X, S=S)
+        model = ScaleFreeModel(144, args["degree"], skew=args["skew"], friendshipWeightGenerator=friendshipWeightGenerator, initialStateGenerator=initialStateGenerator)
     elif(args["type"] == "grid"):
         ind = [10,64, 82]
-        if(args["d"]>2): doubleDegree = True
+        if(args["degree"]>2): doubleDegree = True
         else:doubleDegree = False
-        model = GridModel(12, skew=args["skew"], doubleDegree =doubleDegree, X=X, S=S)
+        model = GridModel(12, skew=args["skew"], doubleDegree =doubleDegree, friendshipWeightGenerator=friendshipWeightGenerator, initialStateGenerator=initialStateGenerator)
     elif(args["type"] == "rand"):
-        model = RandomModel(144, args["d"], skew=args["skew"], X=X, S=S)
+        model = RandomModel(144, args["degree"], skew=args["skew"], friendshipWeightGenerator=friendshipWeightGenerator, initialStateGenerator=initialStateGenerator)
     else:
-        model = RandomModel(144, args["d"],  X=X, S=S)
+        model = RandomModel(144, args["degree"],  friendshipWeightGenerator=friendshipWeightGenerator, initialStateGenerator=initialStateGenerator)
         
     model.addInfluencers(newArgs["influencers"], index=ind, hub=False, allSame=False)
-    res = model.runSim(args["k"], clusters=True)
     return model
 
-#Helper
-def setArgs(newArgs):
-    global args
-    for arg, value in newArgs.items():
-        args[arg] = value
-    
 
-def getRandomExpo():
-    x = np.random.exponential(scale=0.6667)-1
-    if(x>1): return 1
-    elif (x< -1): return -1
-    return x
 
 class Agent:
-    def __init__(self, state, selfWeight):
+    def __init__(self, state, stubbornness):
         self.state = state
         self.interactionsReceived = 0
         self.interactionsGiven = 0
-        self.selfWeight = selfWeight
+        self.stubbornness = stubbornness
     
     def consider(self, neighbour, neighboursWeight, politicalClimate):
         self.interactionsReceived +=1
         neighbour.addInteractionGiven()
-        if(self.selfWeight >= 1): return
+        if(self.stubbornness >= 1): return
         global args
-        weight = self.state*self.selfWeight + politicalClimate + args["defectorUtility"] + neighboursWeight*neighbour.state #+ random.uniform(-0.25, 0.25)
-        #weight =  politicalClimate + defectorUtility + neighboursWeight*neighbour.state #+ random.uniform(-0.25, 0.25)
-        #print("neighbours weight: ", neighboursWeight, " neighbours state: ", neighbour.state, " weight: ", weight)
-        
+        weight = self.state*self.stubbornness + politicalClimate + args["defectorUtility"] + neighboursWeight*neighbour.state #+ random.uniform(-0.25, 0.25)
         
         if(args["continuous"]):
             p1 = (randomness+weight)*(1/(2*randomness))
@@ -105,27 +103,27 @@ class Agent:
 
             self.state += increment
             if(self.state > 1):
-                  self.state = states[0]
+                  self.state = STATES[0]
             elif(self.state <-1):
-                self.state = states[1]       
+                self.state = STATES[1]       
         else:
             if(weight + random.uniform(-randomness, randomness)  > 0):
-                self.state = states[0]
+                self.state = STATES[0]
             else:
-                self.state = states[1]  
+                self.state = STATES[1]  
 
     def addInteractionGiven(self):
         self.interactionsGiven +=1
     
     def setState(self, newState):
-        if(newState >= states[1] and newState <= states[0]):
+        if(newState >= STATES[1] and newState <= STATES[0]):
             self.state = newState
         else:
             print("Error state outside state range: ", newState)
         
 
 class Model:
-    def __init__(self, X = None, S=None):
+    def __init__(self, friendshipWeightGenerator = None, initialStateGenerator=None):
         global args
         self.graph = nx.Graph()
         self.politicalClimate = args["politicalClimate"]
@@ -137,8 +135,8 @@ class Model:
         self.defectorDefectingNeighsSTDList = []
         self.cooperatorDefectingNeighsSTDList =[]
         self.pos = []
-        self.X = X
-        self.S = S
+        self.friendshipWeightGenerator = friendshipWeightGenerator
+        self.initialStateGenerator = initialStateGenerator
         self.clusteravg = []
         self.clusterSD = []
         self.NbAgreeingFriends = []
@@ -238,17 +236,17 @@ class Model:
                 
 
             else:
-                index = [p[0]  for p in degrees if p[1] == d*2]
+                index = [p[0]  for p in degrees if p[1] == degree*2]
                 if(len(index) == 0 or len(index) < number ):
-                    extra = [p[0]  for p in degrees if p[1] == d*2-1]
+                    extra = [p[0]  for p in degrees if p[1] == degree*2-1]
                     index = index + extra
             #print(largest)
         for i in range(number):
             if(allSame):
-                self.graph.node[index[i]]['agent'].setState(states[0])
+                self.graph.node[index[i]]['agent'].setState(STATES[0])
             else:
-                self.graph.node[index[i]]['agent'].setState(states[i % 2])
-            self.graph.node[index[i]]['agent'].selfWeight = 1
+                self.graph.node[index[i]]['agent'].setState(STATES[i % 2])
+            self.graph.node[index[i]]['agent'].stubbornness = 1
             
                 
     
@@ -270,23 +268,21 @@ class Model:
 
     def getFriendshipWeight(self):
         #weigth = random.uniform(0.1, 0.9)
-        #global X
-        weigth = self.X.rvs(1)
+        weigth = self.friendshipWeightGenerator.rvs(1)
         return weigth[0]
 
     def getInitialState(self):
         global args
         if(args['continuous'] != True): 
-            state = states[random.randint(0,1)]
+            state = STATES[random.randint(0,1)]
         else:   
-        #    #state = random.uniform(-1, 1)s
-            #global S
-            state = self.S.rvs(1)[0]
+            #state = random.uniform(-1, 1)
+            state = self.initialStateGenerator.rvs(1)[0]
         #state= getRandomExpo()
         
         return state
  
-    def runSim(self, k, groupInteract=False, drawModel = False, countNeighbours = False, gifname=None, clusters=False):
+    def runSim(self, timesteps, groupInteract=False, drawModel = False, countNeighbours = False, gifname=None, clusters=False):
         if(self.partition ==None):
             self.partition = community.best_partition(self.graph)
         #modularity = community.modularity(self.partition, self.graph)
@@ -310,7 +306,7 @@ class Model:
         self.avgNbAgreeingList.append(mean(self.NbAgreeingFriends))
         
 
-        for i in range(k):
+        for i in range(timesteps):
             if(groupInteract): 
                 nodeIndex = self.groupInteractB()
             else:
@@ -359,20 +355,13 @@ class Model:
         
         (avgs, sds, sizes) = findAvgStateInClusters(self, self.partition)
         self.clusteravg.append(avgs)
-    
-        if(countNeighbours):
-            drawDefectingNeighbours(self.defectorDefectingNeighsList,
-                                    self.cooperatorDefectingNeighsList,
-                                    self.defectorDefectingNeighsSTDList,
-                                    self.cooperatorDefectingNeighsSTDList, 
-                                    gifname)
         
         return self.ratio
     
     def populateModel(self, n, skew = 0):
         global args
         for n in range (n):
-            agent1 = Agent(self.getInitialState(), args["selfWeight"])
+            agent1 = Agent(self.getInitialState(), args["stubbornness"])
             self.graph.node[n]['agent'] = agent1
         edges = self.graph.edges() 
         for e in edges: 
@@ -383,7 +372,7 @@ class Model:
             num = round(abs(skew)*len(self.graph.nodes))
             indexes = random.sample(range(len(self.graph.nodes)), num)
             for i in indexes:
-                self.graph.node[i]['agent'].state = states[1]
+                self.graph.node[i]['agent'].state = STATES[1]
             #self.pos = nx.kamada_kawai_layout(self.graph)
         #self.pos = forceatlas2.forceatlas2_networkx_layout(self.graph)
         #self.pos = force_atlas2_layout(self.graph)
@@ -395,7 +384,7 @@ class GridModel(Model):
         global args
         for i in range(n):
             for j in range (n):
-                agent1 = Agent(self.getInitialState(), args["selfWeight"])
+                agent1 = Agent(self.getInitialState(), args["stubbornness"])
                 self.graph.add_node(i*n+j, agent=agent1, pos=(i, j))
                 self.pos.append((i, j))
                 if(i!=0):
@@ -454,7 +443,7 @@ class GridModel(Model):
                 num = round(abs(skew)*len(self.graph.nodes))
                 indexes = random.sample(range(len(self.graph.nodes)), num)
                 for i in indexes:
-                    self.graph.nodes[i]['agent'].state = states[1]
+                    self.graph.nodes[i]['agent'].state = STATES[1]
 
 class ScaleFreeModel(Model):
     def __init__(self, n, m, skew= 0, **kwargs):
@@ -479,7 +468,6 @@ class RandomModel(Model):
         self.graph =nx.erdos_renyi_graph(n, p)
         self.populateModel(n, skew)
 
-import dill
 
 def saveModels(models, filename):
     with open(filename, 'wb') as f:
@@ -553,11 +541,9 @@ def drawClusteredModel(model):
     draw_model(model)#, outline=edge_col, partition = partition)
     
     
-from IPython.display import Image
 
 
 #-------- drawing functions ---------
-import matplotlib.patches as mpatches
 
 def draw_model(model, save=False, filenumber = None, outline=None, partition=None, extraTitle=""):
     
@@ -674,7 +660,6 @@ def drawCrossSection(models, pltNr = 1):
     #plt.show()
 
 def drawClustersizes(models, pltNr = 1):
-    #mypalette = ["blue","red","green", "yellow", "orange", "violet", "grey", "grey","grey"]
     sizes = []
     for model in models:
         part = findClusters(model)
@@ -686,8 +671,6 @@ def drawClustersizes(models, pltNr = 1):
     sns.distplot(sizes, hist=True, kde=True, color = mypalette[pltNr-1])
 
 def drawConvergence(variables, modelsList, pltNr = 1):
-    #mypalette = ["blue","red","green", "yellow", "orange", "violet", "grey", "grey","grey"]
-
     endState = []
     for models in modelsList:
         values = []

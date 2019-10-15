@@ -35,7 +35,7 @@ if __name__ ==  '__main__':
     fn2 = Path('~/Documents/Prosjek/Master/Comp/balanced/balanced-144-d8-clusters.svg').expanduser()
     fn3 = Path('~/Documents/Prosjek/Master/Comp/balanced/balanced-144-d8-agreeingfriends.svg').expanduser()
     #fg = plt.figure()
-    model = models.simulate(0, {"type": "grid", "continuous":False, "d":4, "k":1, "skew":0.0, "influencers":0})#"initSD": 0.25})
+    model = models.simulate(0, {"type": "grid", "continuous":False, "degree":4, "k":1, "skew":0.0, "influencers":0})#"initSD": 0.25})
     print("degree: ", nx.info(model.graph))
     
     #fg.clear()
