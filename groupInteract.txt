@@ -1,0 +1,79 @@
+    def groupConsider(self, neighbourList):
+        return
+        
+    def groupConsiderDisc(self, avgState, avgWeight, politicalClimate):
+        if(avgState>0):
+            impact = 1
+        else:
+            impact = -1
+        
+        weight = self.state*selfWeight + politicalClimate + defectorUtility + impact*avgWeight #+ random.uniform(-0.25, 0.25)
+        if(weight + random.uniform(-randomness, randomness) > 0):
+            self.state = states[0]
+        else:
+            self.state = states[1]  
+     
+    def groupConsiderB(self, impact, avgState, avgWeight, politicalClimate):
+        global args
+
+        weight = self.state*selfWeight + politicalClimate + defectorUtility + impact #+ random.uniform(-0.25, 0.25)
+        
+        if(args["continuous"]):
+            p1 = (randomness+weight)*(1/(2*randomness))
+            #print(p1)
+            if(p1 <0): p1 = 0
+            if(p1 > 1): p1=1
+            #print("Self.state: ",self.state, ", neighbour: ", neighbour.state,", p1: ", p1)
+            delta = (1/2)*(-self.state+1)*(p1) - ((1/2)*(self.state+1))*(1-p1)
+            #print("delta: ", delta)
+            #print("  ")
+            increment = 2*delta*abs(self.state-avgState)
+            #print("increment: ", increment)
+            #print("  ")
+            self.state += increment
+            #Truncate values    
+            if(self.state > 1):
+                  self.state = states[0]
+            elif(self.state <-1):
+                self.state = states[1]   
+        else:
+            self.groupConsiderDisc(avgState, avgWeight, politicalClimate)
+
+    #def groupConsiderC(self, neighbours):
+
+
+    #Model
+    def groupInteract(self):
+        nodeIndex = random.randint(0, len(self.graph) - 1)
+        node = self.graph.nodes[nodeIndex]['agent']
+        
+        neighbours =  list(self.graph.adj[nodeIndex].keys())
+        if(len(neighbours) == 0):
+            return
+        
+        chosenNeighbourIndex = neighbours[random.randint(0, len(neighbours)-1)]
+        chosenNeighbour = self.graph.nodes[chosenNeighbourIndex]['agent']
+        
+        weight = self.graph[nodeIndex][chosenNeighbourIndex]['weight']
+        
+        neighbourList = [self.graph.nodes[i] for i in neighbours]
+        node.groupConsiderA(chosenNeighbour, weight, neighbourList)
+        
+    def groupInteractB(self):
+        nodeIndex = random.randint(0, len(self.graph) - 1)
+        node = self.graph.nodes[nodeIndex]['agent']
+        neighbours =  list(self.graph.adj[nodeIndex].keys())
+        if(len(neighbours) == 0):
+            return nodeIndex
+        
+        impact = 0
+        avgState = mean([ self.graph.nodes[n]['agent'].state for n in neighbours])
+        avgWeight = mean([self.graph[nodeIndex][n]['weight'] for n in neighbours])
+        for n in neighbours:
+            neighbour = self.graph.nodes[n]['agent']
+            weight = self.graph[nodeIndex][n]['weight']
+            impact += neighbour.state * weight
+        impact = impact/len(neighbours)
+        
+        node.groupConsiderB(impact, avgState, avgWeight, self.politicalClimate)
+        return nodeIndex
