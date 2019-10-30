@@ -92,18 +92,48 @@ class Agent:
         global args
         weight = self.state*self.stubbornness + politicalClimate + args["defectorUtility"] + neighboursWeight*neighbour.state #+ random.uniform(-0.25, 0.25)
         
-        if(args["continuous"]):
-            p1 = (randomness+weight)*(1/(2*randomness))
+        #if(args["continuous"]):
+        #    p1 = (randomness+weight)*(1/(2*randomness))
 
-            if(p1 <0): p1 = 0
-            if(p1 > 1): p1=1
+        #    if(p1 <0): p1 = 0
+        #    if(p1 > 1): p1=1
+        #
+        #    delta = (1/2)*(-self.state+1)*(p1) - ((1/2)*(self.state+1))*(1-p1)
+        #    increment = 2*delta*abs(self.state-neighbour.state)
+
+        #    self.state += increment
+        #    if(self.state > 1):
+        #          self.state = STATES[0]
+        #    elif(self.state <-1):
+        #        self.state = STATES[1]       
+        #else:
+        #    if(weight + random.uniform(-randomness, randomness)  > 0):
+        #        self.state = STATES[0]
+        #    else:
+        #        self.state = STATES[1]  
         
-            delta = (1/2)*(-self.state+1)*(p1) - ((1/2)*(self.state+1))*(1-p1)
-            increment = 2*delta*abs(self.state-neighbour.state)
+        if(args["continuous"]):
+            
+            p1 = 0
+            sample = random.uniform(-randomness,randomness)
+            check = (weight + sample)
+
+            if(check < 0): 
+                p1 = 0
+            
+            else if(check > 1): 
+                p1 = 1
+            
+            else: 
+                p1 = randomness*(weight + 1)
+
+            p2 = 1 - p1
+            
+            delta = abs(self.state - neighbour.state)*(p1*(1-self.state) - p2*(1+self.state))
 
             self.state += increment
             if(self.state > 1):
-                  self.state = STATES[0]
+                self.state = STATES[0]
             elif(self.state <-1):
                 self.state = STATES[1]       
         else:
