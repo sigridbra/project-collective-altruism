@@ -18,7 +18,6 @@ import multiprocessing
 import os
 from pathlib import Path
 import dill
-
  
 if __name__ ==  '__main__': 
     plt.rcParams["svg.fonttype"] = "none"
@@ -31,8 +30,10 @@ if __name__ ==  '__main__':
     pool=Pool( processes = numberOfProcessors)
     
     # ----------PATH TO SAVE FIGURES AND DATA-----------
-    pathFig = '~/Documents/Prosjek/Master/Paper/SecondRound/'
-    pathData = '~/Documents/dev/prosjektoppgave/paper/'
+    #pathFig = '~/Documents/Prosjek/Master/Paper/SecondRound/'
+    #pathData = '~/Documents/dev/prosjektoppgave/paper/'
+    pathFig = '~/phd-stuff/research/altruism/project-collective-altruism/figs/'
+    pathData = '~/phd-stuff/research/altruism/project-collective-altruism/data/'
 
 
     variables = [ -0.8]#, 0.125, 0.0625 ]
