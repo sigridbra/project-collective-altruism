@@ -24,7 +24,7 @@ if __name__ ==  '__main__':
 
     #Constants and Variables
     numberOfSimulations =5 #10^3
-    numberOfProcessors = 7 #Prosesser kan endres
+    numberOfProcessors = 4 #Prosesser kan endres
 
     start = time.time()
     pool=Pool( processes = numberOfProcessors)
@@ -88,7 +88,7 @@ if __name__ ==  '__main__':
             #models.saveModels(sim, Path(pathData +filename + filenameList[i]).expanduser())
         simtime= time.time()
         print(f'Time to simulate: {simtime-start}s\n')
-        
+
         plt.figure("states")
         #plt.show()
         """current_handles, current_labels = fg1.gca().get_legend_handles_labels()

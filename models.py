@@ -652,6 +652,7 @@ def drawAvgState(models, avg =False, pltNr=1, title="", clusterSD = False):
         text =["Scale Free", "Grid"]
         handles = [mpatches.Patch(color=mypalette[c], label=text[c]) for c in range(len(text))]
         plt.legend(handles=handles)
+        print(models[0].states)
         if(clusterSD):
             avgSds = []
             for mod in models:
