@@ -35,7 +35,7 @@ if __name__ ==  '__main__':
     pathData = '~/Documents/dev/prosjektoppgave/paper/'
 
 
-    variables = [ -0.8]#, 0.125, 0.0625 ]
+    variables = [ 0]#, 0.125, 0.0625 ]
     for v in variables:
         print("Started variable: ", v)
         filename = f'sim2c-50s-4000-sw0_6-2opposing-zealots'

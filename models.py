@@ -74,6 +74,7 @@ def simulate(i, newArgs):
         model = RandomModel(144, args["degree"],  friendshipWeightGenerator=friendshipWeightGenerator, initialStateGenerator=initialStateGenerator)
         
     model.addInfluencers(newArgs["influencers"], index=ind, hub=False, allSame=False)
+    res = model.runSim(args["timesteps"], clusters=True)
     return model
 
 
@@ -307,11 +308,9 @@ class Model:
         
 
         for i in range(timesteps):
-            if(groupInteract): 
-                nodeIndex = self.groupInteractB()
-            else:
-                #print("step: ", i)
-                nodeIndex = self.interact()
+            
+            #print("step: ", i)
+            nodeIndex = self.interact()
             ratio = self.countCooperatorRatio()
             self.ratio.append(ratio)
             (state, sd) = self.getAvgState()
@@ -625,7 +624,6 @@ def drawAvgState(models, avg =False, pltNr=1, title="", clusterSD = False):
         if(clusterSD):
             avgSds = []
             for mod in models:
-                #print(mod.clusterSD)
                 array = np.array(mod.clusterSD)
                 avgSd = array.mean(axis=1)
                 avgSds.append(avgSd)
@@ -688,14 +686,12 @@ def drawClusterState(models, pltNr = 1, step=-1, subplot=1):
         plt.subplot(1, 3, 3, title="Avg State after Simulation")
         states = []
         for i in range(len(models)):
-            #print(models[i].clusteravg[0])
             for c in models[i].clusteravg[-1]:
                 states.append(c)
     else:
         plt.subplot(1, 3, subplot, title="Avg State at t="+ str(step))
         states = []
         for i in range(len(models)):
-            #print(models[i].clusteravg[step])
             for c in models[i].clusteravg[step]:
                 states.append(c)
     ax = plt.gca()
@@ -706,7 +702,6 @@ def drawClusterState(models, pltNr = 1, step=-1, subplot=1):
     #plt.xlabel('avg state of cooperators after all time steps')
     plt.xlabel('Density')
     plt.ylabel('State')
-    #print(states)
     try:
         sns.distplot(states, hist=True, kde=True, color = mypalette[pltNr-1], vertical=True)
     except:
