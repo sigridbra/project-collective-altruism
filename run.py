@@ -32,8 +32,8 @@ if __name__ ==  '__main__':
     # ----------PATH TO SAVE FIGURES AND DATA-----------
     #pathFig = '~/Documents/Prosjek/Master/Paper/SecondRound/'
     #pathData = '~/Documents/dev/prosjektoppgave/paper/'
-    pathFig = '~/phd-stuff/research/altruism/project-collective-altruism/figs/'
-    pathData = '~/phd-stuff/research/altruism/project-collective-altruism/data/'
+    pathFig = '~/phd-stuff/research/project-collective-altruism/figs/'
+    pathData = '~/phd-stuff/research/project-collective-altruism/data/'
 
 
     variables = [ 0]#, 0.125, 0.0625 ]

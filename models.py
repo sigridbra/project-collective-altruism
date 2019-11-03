@@ -128,11 +128,11 @@ class Agent:
             else: 
                 p1 = 1/(2*randomness)*(randomness + 1)
                 
-            p2 = 1 - p1
+            p2 = 1.0 - p1
             
             delta = abs(self.state - neighbour.state)*(p1*(1-self.state) - p2*(1+self.state))
 
-            self.state += increment
+            self.state += delta
             if(self.state > 1):
                 self.state = STATES[0]
             elif(self.state <-1):
