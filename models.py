@@ -41,7 +41,7 @@ politicalClimate= 0.2
 newPoliticalClimate = 0.2
 stubbornness = 0.6
 degree = 4 
-timesteps=4000  #timesteps
+timesteps=4000  
 continuous = True
 skew =0
 initSD = 0.25
@@ -602,7 +602,6 @@ def draw_model(model, save=False, filenumber = None, outline=None, partition=Non
     #plt.show()
     
     if(outline !=None):
-        #mypalette = ["blue","red","green", "yellow", "orange", "violet", "grey", "magenta","cyan", "cyan", "cyan", "cyan"]
         ax = plt.gca()
         ax.collections[0].set_edgecolor(outline)
         (clusters, sd, clsize) = findAvgStateInClusters(model, part= partition)
@@ -622,7 +621,6 @@ def draw_model(model, save=False, filenumber = None, outline=None, partition=Non
 def drawAvgState(models, avg =False, pltNr=1, title="", clusterSD = False):
     plt.xlabel("Timesteps")
     plt.ylabel("Average State")
-    #mypalette = ["blue","red","green", "yellow", "orange", "violet", "grey", "grey","grey"]
     plt.subplot(1, 2, 1, title="Average State and SD")
     
     if(not avg):
@@ -669,7 +667,6 @@ def drawAvgState(models, avg =False, pltNr=1, title="", clusterSD = False):
 
 def drawCrossSection(models, pltNr = 1):
     values = []
-    #mypalette = ["blue","red","green", "yellow", "orange", "violet", "grey", "grey","grey"]
     for model in models:
         values.append(model.states[-1])
     plt.subplot(1, 2, 2, title="Density Plot of State for Simulations")
