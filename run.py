@@ -18,21 +18,22 @@ import multiprocessing
 import os
 from pathlib import Path
 import dill
-
  
 if __name__ ==  '__main__': 
     plt.rcParams["svg.fonttype"] = "none"
 
     #Constants and Variables
     numberOfSimulations =5 #10^3
-    numberOfProcessors = 7 #Prosesser kan endres
+    numberOfProcessors = 4 #Prosesser kan endres
 
     start = time.time()
     pool=Pool( processes = numberOfProcessors)
     
     # ----------PATH TO SAVE FIGURES AND DATA-----------
-    pathFig = '~/Documents/Prosjek/Master/Paper/SecondRound/'
-    pathData = '~/Documents/dev/prosjektoppgave/paper/'
+    #pathFig = '~/Documents/Prosjek/Master/Paper/SecondRound/'
+    #pathData = '~/Documents/dev/prosjektoppgave/paper/'
+    pathFig = '~/phd-stuff/research/altruism/project-collective-altruism/figs/'
+    pathData = '~/phd-stuff/research/altruism/project-collective-altruism/data/'
 
 
     variables = [ 0]#, 0.125, 0.0625 ]
@@ -87,7 +88,7 @@ if __name__ ==  '__main__':
             #models.saveModels(sim, Path(pathData +filename + filenameList[i]).expanduser())
         simtime= time.time()
         print(f'Time to simulate: {simtime-start}s\n')
-        
+
         plt.figure("states")
         #plt.show()
         """current_handles, current_labels = fg1.gca().get_legend_handles_labels()
