@@ -39,7 +39,7 @@ if __name__ ==  '__main__':
     variables = [ 0]#, 0.125, 0.0625 ]
     for v in variables:
         print("Started variable: ", v)
-        filename = f'sim2c-50s-4000-sw0_6-2opposing-zealots'
+        filename = f'sim2c-50s-2000-sw0_6-0opposing-zealots'
         fg1= plt.figure("states", frameon=False, figsize=(14,7))
         fg2 = plt.figure("cross", frameon=False)
         fg22 = plt.figure("cross2", frameon=False)
@@ -55,13 +55,13 @@ if __name__ ==  '__main__':
         #argList.append({"continuous": True, "type" : "cl", "influencers":0})
         #argList.append({"continuous": False, "type" : "rand", "influencers":0})
         #argList.append({"continuous": False, "type" : "cl", "influencers":0})
-        argList.append({"continuous": True, "type" : "sf", "influencers":2})
+        #argList.append({"continuous": True, "type" : "sf", "influencers":2})
         #argList.append({"continuous": False, "type" : "sf", "influencers":0})
-        argList.append({"continuous": True, "type" : "grid", "influencers":2})
-        #argList.append({"continuous": False, "type" : "grid", "influencers":0})
+        #argList.append({"continuous": True, "type" : "grid", "influencers":2})
+        argList.append({"continuous": True, "type" : "grid", "influencers":0})
         #print("rand")
-        titleList = ["Scale Free", "Grid"]        
-        filenameList = ["-sf", "-grid"]
+        titleList = ["Clustered"]        
+        filenameList = ["-cluster"]
         for i in range(len(argList)):
             sim = pool.starmap(models.simulate, zip(range(numberOfSimulations), repeat(argList[i])))
             plt.figure("states")

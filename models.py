@@ -36,14 +36,14 @@ def getRandomExpo():
 #Constants and Variables
 
 STATES = [1, -1] #1 being cooperating, -1 being defecting
-defectorUtility = -0.20 
+defectorUtility = -0.0 
 politicalClimate= 0.2
 newPoliticalClimate = 0.2
 stubbornness = 0.6
 degree = 4 
-timesteps=4000  
+timesteps=2000  
 continuous = True
-skew =0
+skew = -0.15
 initSD = 0.25
 mypalette = ["blue","red","green", "orange", "magenta","cyan","violet", "grey", "yellow"]
 randomness = 0.25
@@ -93,50 +93,46 @@ class Agent:
         global args
         weight = self.state*self.stubbornness + politicalClimate + args["defectorUtility"] + neighboursWeight*neighbour.state #+ random.uniform(-0.25, 0.25)
         
-        #if(args["continuous"]):
-        #    p1 = (randomness+weight)*(1/(2*randomness))
-
-        #    if(p1 <0): p1 = 0
-        #    if(p1 > 1): p1=1
-        #
-        #    delta = (1/2)*(-self.state+1)*(p1) - ((1/2)*(self.state+1))*(1-p1)
-        #    increment = 2*delta*abs(self.state-neighbour.state)
-
-        #    self.state += increment
-        #    if(self.state > 1):
-        #          self.state = STATES[0]
-        #    elif(self.state <-1):
-        #        self.state = STATES[1]       
-        #else:
-        #    if(weight + random.uniform(-randomness, randomness)  > 0):
-        #        self.state = STATES[0]
-        #    else:
-        #        self.state = STATES[1]  
-        
         if(args["continuous"]):
-            
-            p1 = 0
-            sample = random.uniform(-randomness,randomness)
-            check = (weight + sample)
+            p1 = (randomness+weight)*(1/(2*randomness))
 
-            if(check < 0): 
-                p1 = 0
-            
-            if(check > 1): 
-                p1 = 1
-            
-            else: 
-                p1 = 1/(2*randomness)*(randomness + 1)
-                
-            p2 = 1.0 - p1
-            
-            delta = abs(self.state - neighbour.state)*(p1*(1-self.state) - p2*(1+self.state))
+            if(p1 <0): p1 = 0
+            if(p1 > 1): p1=1
+        
+            delta = (1/2)*(-self.state+1)*(p1) - ((1/2)*(self.state+1))*(1-p1)
+            increment = 2*delta*abs(self.state-neighbour.state)
 
-            self.state += delta
+            self.state += increment
             if(self.state > 1):
-                self.state = STATES[0]
+                  self.state = STATES[0]
             elif(self.state <-1):
                 self.state = STATES[1]       
+        
+        #if(args["continuous"]):
+        #    
+        #    p1 = 0
+        #    sample = random.uniform(-randomness,randomness)
+        #    check = (weight + sample)
+
+        #    if(check < -randomness): 
+        #        p1 = 0
+        #    
+        #    if(check > randomness): 
+        #        p1 = 1
+        #    
+        #    else: 
+        #        p1 = 1/(2*randomness)*(randomness + sample)
+        #        
+        #    p2 = 1.0 - p1
+        #    
+        #    delta = abs(self.state - neighbour.state)*(p1*(1.0-self.state) - p2*(1.0+self.state))
+
+        #    self.state += delta
+        #    if(self.state > 1):
+        #        self.state = STATES[0]
+        #    elif(self.state <-1):
+        #        self.state = STATES[1]       
+        
         else:
             if(weight + random.uniform(-randomness, randomness)  > 0):
                 self.state = STATES[0]
@@ -313,7 +309,7 @@ class Model:
         
         return state
  
-    def runSim(self, timesteps, groupInteract=False, drawModel = False, countNeighbours = False, gifname=None, clusters=False):
+    def runSim(self, timesteps, groupInteract=False, drawModel = True, countNeighbours = False, gifname=None, clusters=False):
         if(self.partition ==None):
             self.partition = community.best_partition(self.graph)
         #modularity = community.modularity(self.partition, self.graph)
@@ -574,7 +570,7 @@ def drawClusteredModel(model):
 
 #-------- drawing functions ---------
 
-def draw_model(model, save=False, filenumber = None, outline=None, partition=None, extraTitle=""):
+def draw_model(model, save=True, filenumber = None, outline=None, partition=None, extraTitle=""):
     
     #plt.figure(figsize=(4, 4))
     #plt.subplot(1, 2, 1, title="State of the Nodes")
