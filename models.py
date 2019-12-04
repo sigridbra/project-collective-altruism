@@ -10,6 +10,7 @@ import networkx as nx
 from scipy.stats import truncnorm
 import os
 from community import community_louvain
+#import community
 from operator import itemgetter
 import heapq
 from IPython.display import Image
@@ -25,8 +26,8 @@ def get_truncated_normal(mean=0, sd=1, low=0, upp=10):
     return truncnorm(
             (low - mean) / sd, (upp - mean) / sd, loc=mean, scale=sd)
 
-    def setArgs(newArgs):
-        global args
+def setArgs(newArgs):
+    global args
     for arg, value in newArgs.items():
         args[arg] = value
 
@@ -40,7 +41,7 @@ def getRandomExpo():
 
 STATES = [1, -1] #1 being cooperating, -1 being defecting
 defectorUtility = 0.0
-politicalClimate= 0.2475        # for "equilibrium" use 0.2475
+politicalClimate= 0.255        # for "equilibrium" use 0.2475
 newPoliticalClimate =politicalClimate 
 stubbornness = 0.6
 degree = 4 
@@ -480,9 +481,9 @@ class GridModel(Model):
                             self.graph.add_edge(i*n+j, (n-1), weight = weight)
         if(skew != 0 and not args["continuous"] ): 
             num = round(abs(skew)*len(self.graph.nodes))
-                indexes = random.sample(range(len(self.graph.nodes)), num)
-                for i in indexes:
-                    self.graph.nodes[i]['agent'].state = STATES[1]
+            indexes = random.sample(range(len(self.graph.nodes)), num)
+            for i in indexes:
+                self.graph.nodes[i]['agent'].state = STATES[1]
 
 class ScaleFreeModel(Model):
     def __init__(self, n, m, skew= 0, **kwargs):

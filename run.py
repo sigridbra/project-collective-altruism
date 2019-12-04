@@ -40,7 +40,7 @@ if __name__ ==  '__main__':
     plt.rcParams["svg.fonttype"] = "none"
 
     #Constants and Variables
-    numberOfSimulations =100 #10^3
+    numberOfSimulations =10 #10^3
     numberOfProcessors = 4 #Prosesser kan endres
 
     start = time.time()
