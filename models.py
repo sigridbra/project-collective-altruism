@@ -41,13 +41,13 @@ def getRandomExpo():
 
 STATES = [1, -1] #1 being cooperating, -1 being defecting
 defectorUtility = 0.0
-politicalClimate= 0.255        # for "equilibrium" use 0.2475
+politicalClimate= 0.025        # for "equilibrium" use 0.2475
 newPoliticalClimate =politicalClimate 
 stubbornness = 0.6
 degree = 4 
-timesteps= 5000  #timesteps
+timesteps= 10000  #timesteps
 continuous = True
-skew = -0.15
+skew = -0.25
 initSD = 0.20
 mypalette = ["blue","red","green", "orange", "magenta","cyan","violet", "grey", "yellow"]
 randomness = 0.25
@@ -127,7 +127,7 @@ class Agent:
             sample = random.uniform(-randomness,randomness)
             check = (weight + sample)
 
-            if(check < randomness): 
+            if(check < -randomness): 
                 p1 = 0
 
             elif(check > randomness): 
