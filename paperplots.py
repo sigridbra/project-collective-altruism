@@ -58,20 +58,25 @@ figstd.savefig('stdtime1.png')
 
 meanarr = np.apply_along_axis(np.mean,axis=0,arr=stdtime)
 
+figmean, ax = plt.subplots()
+ax.plot(meanarr)
+
+figmean.savefig('mean.png')
+
 figstd, ax = plt.subplots()
 
 for line in stdtime :
     ax.plot(line,zorder=2)
 
-shiftsigma11 = -stds + meanarr
-shiftsigma12 = stds + meanarr
-shiftsigma21 = -2*stds + meanarr
-shiftsigma22 = 2*stds + meanarr
-
-plt.ylim(-1,1)
-ax.fill_between(times,shiftsigma21,shiftsigma22,zorder=2,color='k',alpha=0.2,label='STD = $1\\sigma$')
-ax.fill_between(times,shiftsigma11,shiftsigma12,zorder=2,color='k',alpha=0.2,label='STD = $2\\sigma$')
-plt.legend()
+#shiftsigma11 = -stds + meanarr
+#shiftsigma12 = stds + meanarr
+#shiftsigma21 = -2*stds + meanarr
+#shiftsigma22 = 2*stds + meanarr
+#
+#plt.ylim(-1,1)
+#ax.fill_between(times,shiftsigma21,shiftsigma22,zorder=2,color='k',alpha=0.2,label='STD = $1\\sigma$')
+#ax.fill_between(times,shiftsigma11,shiftsigma12,zorder=2,color='k',alpha=0.2,label='STD = $2\\sigma$')
+#plt.legend()
 
 figstd.savefig('stdtime2.png')
 
@@ -90,7 +95,7 @@ times = np.array(times)
 times = times.flatten()
 heatdata = heatdataraw.flatten()
 
-binsize = 400
+binsize = 100
 xbins = np.arange(0,elsinrow,binsize)
 ybins = np.linspace(-1,1,elsinrow/binsize)
 

@@ -41,17 +41,17 @@ def getRandomExpo():
 
 STATES = [1, -1] #1 being cooperating, -1 being defecting
 defectorUtility = 0.0
-politicalClimate= 0.025        # for "equilibrium" use 0.2475
+politicalClimate= 0.027        # for "equilibrium" use 0.2475
 newPoliticalClimate =politicalClimate 
-stubbornness = 0.6
+stubbornness = 0.7
 degree = 4 
-timesteps= 10000  #timesteps
+timesteps= 15000  #timesteps
 continuous = True
 skew = -0.25
-initSD = 0.20
+initSD = 0.15
 mypalette = ["blue","red","green", "orange", "magenta","cyan","violet", "grey", "yellow"]
-randomness = 0.25
-gridtype = 'grid'
+randomness = 0.10
+gridtype = 'cl'
 
 args = {"defectorUtility" : defectorUtility, 
         "politicalClimate" : politicalClimate, 
