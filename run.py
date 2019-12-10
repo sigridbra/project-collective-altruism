@@ -40,7 +40,7 @@ if __name__ ==  '__main__':
     plt.rcParams["svg.fonttype"] = "none"
 
     #Constants and Variables
-    numberOfSimulations =160 #10^3
+    numberOfSimulations =16 #10^3
     numberOfProcessors = 16 #Prosesser kan endres
 
     start = time.time()
@@ -53,46 +53,46 @@ if __name__ ==  '__main__':
     pathData = '~/phd-stuff/research/project-collective-altruism/data/'
     
     modelargs=models.getargs()  # requires models.py to be imported
-    runs = 2   ## has to be even for multiple runs also n is actually n-1 because I'm bad
+    runs = 100   ## has to be even for multiple runs also n is actually n-1 because I'm bad
    
     ## comment out all below for single run
-    #var = 'skew'
-    #
-    ### log grid, only valid on range [-1,1]
+    var = 'skew'
+    
+    ## log grid, only valid on range [-1,1]
 
-    #steps = int(runs/2)
-    #start = modelargs[var]
-    #endup = 1.0
-    #enddw = -1.0
-    #logendup = np.log(endup+(1.0-start))
-    #logenddw = np.log(enddw+(1.0-start))
-    #stepup = logendup / steps
-    #stepdw = logenddw / steps
+    steps = int(runs/2)
+    start = modelargs[var]
+    endup = 0.40
+    enddw = -0.40
+    logendup = np.log(endup+(1.0-start))
+    logenddw = np.log(enddw+(1.0-start))
+    stepup = logendup / steps
+    stepdw = logenddw / steps
 
-    #gridup = np.array([])
-    #griddw = np.array([])
+    gridup = np.array([])
+    griddw = np.array([])
 
-    #for k in range (steps):
-    #    pt = np.exp(stepup*k)
-    #    gridup = np.append(gridup,pt)
-    #
-    #for k in range (steps):
-    #    pt = np.exp(stepdw*k)
-    #    griddw = np.append(griddw,pt)
+    for k in range (steps):
+        pt = np.exp(stepup*k)
+        gridup = np.append(gridup,pt)
+    
+    for k in range (steps):
+        pt = np.exp(stepdw*k)
+        griddw = np.append(griddw,pt)
 
-    #gridup = gridup - (1.0-start)
-    #griddw = griddw - (1.0-start)
+    gridup = gridup - (1.0-start)
+    griddw = griddw - (1.0-start)
 
-    #griddw = griddw[1:]
-    #griddw = np.flip(griddw)
+    griddw = griddw[1:]
+    griddw = np.flip(griddw)
 
-    #grid = np.append(griddw,gridup)
+    grid = np.append(griddw,gridup)
 
-    #print (grid)
+    print (grid)
 
     for run in range(runs-1):
         print("Started iteration: ", run)
-        #newvar = grid[run]
+        newvar = grid[run]
         
         #filename = f'sim2c-50s-4000-sw0_6-2opposing-zealots'
         filename="pol{}_skew{}_sd{}_random{}_tsteps{}_{}".format(modelargs["newPoliticalClimate"],modelargs["skew"],modelargs["initSD"],modelargs["randomness"],modelargs["timesteps"],modelargs["type"])
@@ -109,25 +109,24 @@ if __name__ ==  '__main__':
         #fn = Path(f'~/Documents/Prosjek/Master/Comp/New/144-k10-wi{v}-50s-skew0.05-comparewi.svg').expanduser()
         """ I moved network type specification to models.py for consistancy """
         argList = []
-        clstate = True
         #argList.append({"continuous": True, "type" : "rand", "influencers":0})
         #argList.append({"continuous": True, "type" : "cl", "influencers":0})
         #argList.append({"continuous": False, "type" : "rand", "influencers":0})
         #argList.append({"continuous": False, "type" : "cl", "influencers":0})
         #argList.append({"continuous": True, "type" : "sf", "influencers":0})
         #argList.append({"continuous": False, "type" : "sf", "influencers":0})
-        #argList.append({"continuous": True, "influencers": 0, "skew": newvar})
-        argList.append({"continuous": True, "influencers": 0})
+        argList.append({"continuous": True, "influencers": 0, "skew": newvar})
+        #argList.append({"continuous": True, "influencers": 0})
         #argList.append({"continuous": False, "type" : "grid", "influencers":0})
         #print("rand")
         titleList = ["clustered"]        
         filenameList = ["-cl"]
         for i in range(len(argList)):
             sim = pool.starmap(models.simulate, zip(range(numberOfSimulations), repeat(argList[i])))
-            plt.figure("states")
+            #plt.figure("states")
             #fg1.subplots(nrows=1, ncols=2 )
             #fg1.subplots()
-            models.drawAvgState(sim, avg=True, pltNr=i, title=titleList[i], clusterSD=True)
+            #models.drawAvgState(sim, avg=True, pltNr=i, title=titleList[i], clusterSD=True)
             #models.drawCrossSection(sim, pltNr=i+1)
             #plt.draw()
             #plt.figure("cross")
@@ -145,17 +144,17 @@ if __name__ ==  '__main__':
             #plt.figure("agreeingfriends")
             #models.drawAvgNumberOfAgreeingFriends(sim, pltNr=i+1)
             #plt.draw()
-            print("Finished with ", titleList[i])
+            #print("Finished with ", titleList[i])
             #models.saveModels(sim, Path(pathData + filename + filenameList[i]).expanduser())
-            #fname = './data/multiskew{}.csv'.format(newvar)
+            fname = './data/multiskew{}.csv'.format(newvar)
             #fname = './data/states.csv'
-            fname = './data/runs.csv'
-            #models.saveavgdata(sim, fname,clstate)
-            models.savesubdata(sim, fname)
+            #fname = './data/runs.csv'
+            models.saveavgdata(sim, fname)
+            #models.savesubdata(sim, fname)
         simtime= time.time()
         print(f'Time to simulate: {simtime-start}s\n')
 
-        plt.figure("states")
+        #plt.figure("states")
         #plt.show()
         """current_handles, current_labels = fg1.gca().get_legend_handles_labels()
         print(current_labels)
@@ -172,10 +171,10 @@ if __name__ ==  '__main__':
         plt.legend(handles, labels, ncol = 3,  fontsize='medium', columnspacing=0.25, handlelength=1, title="Avg    SD    Com.")
         """
         
-        plt.legend()
-        fg1.savefig(fn1)
-        plt.clf()
-        plt.close()
+        #plt.legend()
+        #fg1.savefig(fn1)
+        #plt.clf()
+        #plt.close()
         #print("feridg med 1, ", v)
         
         #plt.figure("cross")

@@ -583,7 +583,7 @@ def drawClusteredModel(model):
     
 #-------- save data functions ---------
 
-def saveavgdata(models, filename, clusterSD):
+def saveavgdata(models, filename):
     states = []
     sds = []
     for i in range(len(models)):
@@ -595,7 +595,7 @@ def saveavgdata(models, filename, clusterSD):
     outs = np.column_stack((avg,std))
     hstring = 'avg.std'
 
-    if(clusterSD):
+    if(gridtype == 'cl'):
         avgSds = []
         for mod in models:
             array = np.array(mod.clusterSD)
