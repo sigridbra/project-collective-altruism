@@ -41,11 +41,11 @@ def getRandomExpo():
 
 STATES = [1, -1] #1 being cooperating, -1 being defecting
 defectorUtility = 0.0
-politicalClimate= 0.027        # for "equilibrium" use 0.2475
+politicalClimate= 0.0135/2       # 0.0135 for equil 
 newPoliticalClimate =politicalClimate 
 stubbornness = 0.7
 degree = 4 
-timesteps= 15000  #timesteps
+timesteps= 30000  #timesteps
 continuous = True
 skew = -0.25
 initSD = 0.15
@@ -605,7 +605,7 @@ def saveavgdata(models, filename):
         avgAvgSd = array.mean(axis=0)
         outs = np.column_stack((outs,avgAvgSd))
         hstring += ',clstd'
-
+   
     np.savetxt(filename,outs,delimiter=',',header=hstring) 
     
 def savesubdata(models,filename):

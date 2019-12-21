@@ -40,8 +40,8 @@ if __name__ ==  '__main__':
     plt.rcParams["svg.fonttype"] = "none"
 
     #Constants and Variables
-    numberOfSimulations =16 #10^3
-    numberOfProcessors = 16 #Prosesser kan endres
+    numberOfSimulations =500 #10^3
+    numberOfProcessors = 20 #Prosesser kan endres
 
     start = time.time()
     pool=Pool( processes = numberOfProcessors)
@@ -53,56 +53,59 @@ if __name__ ==  '__main__':
     pathData = '~/phd-stuff/research/project-collective-altruism/data/'
     
     modelargs=models.getargs()  # requires models.py to be imported
-    runs = 100   ## has to be even for multiple runs also n is actually n-1 because I'm bad
-   
-    ## comment out all below for single run
-    var = 'skew'
-    
-    ## log grid, only valid on range [-1,1]
+    runs = 2   ## has to be even for multiple runs also n is actually n-1 because I'm bad
 
-    steps = int(runs/2)
-    start = modelargs[var]
-    endup = 0.40
-    enddw = -0.40
-    logendup = np.log(endup+(1.0-start))
-    logenddw = np.log(enddw+(1.0-start))
-    stepup = logendup / steps
-    stepdw = logenddw / steps
+    ### comment out all below for single run
+    #var = 'skew'
+    #
+    ### log grid, only valid on range [-1,1]
 
-    gridup = np.array([])
-    griddw = np.array([])
+    #steps = int(runs/2)
+    #start = modelargs[var]
+    #endup = 0.10
+    #enddw = -0.45
+    #logendup = np.log(endup+(1.0-start))
+    #logenddw = np.log(enddw+(1.0-start))
+    #stepup = logendup / steps
+    #stepdw = logenddw / steps
 
-    for k in range (steps):
-        pt = np.exp(stepup*k)
-        gridup = np.append(gridup,pt)
-    
-    for k in range (steps):
-        pt = np.exp(stepdw*k)
-        griddw = np.append(griddw,pt)
+    #gridup = np.array([])
+    #griddw = np.array([])
 
-    gridup = gridup - (1.0-start)
-    griddw = griddw - (1.0-start)
+    #for k in range (steps):
+    #    pt = np.exp(stepup*k)
+    #    gridup = np.append(gridup,pt)
+    #
+    #for k in range (steps):
+    #    pt = np.exp(stepdw*k)
+    #    griddw = np.append(griddw,pt)
 
-    griddw = griddw[1:]
-    griddw = np.flip(griddw)
+    #gridup = gridup - (1.0-start)
+    #griddw = griddw - (1.0-start)
 
-    grid = np.append(griddw,gridup)
+    #griddw = griddw[1:]
+    #griddw = np.flip(griddw)
 
-    print (grid)
+    #grid = np.append(griddw,gridup)
+
+    ##grid = grid[grid > -0.05436774917512954]
+    #
+    #print (grid)
 
     for run in range(runs-1):
         print("Started iteration: ", run)
-        newvar = grid[run]
-        
+        #newvar = grid[run]
+        statevar = modelargs['politicalClimate']
+
         #filename = f'sim2c-50s-4000-sw0_6-2opposing-zealots'
-        filename="pol{}_skew{}_sd{}_random{}_tsteps{}_{}".format(modelargs["newPoliticalClimate"],modelargs["skew"],modelargs["initSD"],modelargs["randomness"],modelargs["timesteps"],modelargs["type"])
-        fg1= plt.figure("states", frameon=False)
+        #filename="./data/pol{}_skew{}_sd{}_random{}_tsteps{}_{}.csv".format(modelargs["newPoliticalClimate"],modelargs["skew"],modelargs["initSD"],modelargs["randomness"],modelargs["timesteps"],modelargs["type"])
+        #fg1= plt.figure("states", frameon=False)
         #fg1= plt.figure("states", frameon=False, figsize=(14,7))
         #fg2 = plt.figure("cross", frameon=False)
         #fg22 = plt.figure("cross2", frameon=False)
         #fg3 = plt.figure("agreeingfriends", frameon=False)
         #fg22 = plt.figure("cross2")
-        fn1 = Path(pathFig + filename + '.png').expanduser()
+        #fn1 = Path(pathFig + filename + '.png').expanduser()
         #fn2 = Path(pathFig + filename +'-crossection.svg').expanduser()  
         #fn22 = Path(pathFig + filename +'-crossection2.svg').expanduser()  
         #fn3 = Path(pathFig + filename +'-avgagreeingfriends.svg').expanduser()        
@@ -115,8 +118,8 @@ if __name__ ==  '__main__':
         #argList.append({"continuous": False, "type" : "cl", "influencers":0})
         #argList.append({"continuous": True, "type" : "sf", "influencers":0})
         #argList.append({"continuous": False, "type" : "sf", "influencers":0})
-        argList.append({"continuous": True, "influencers": 0, "skew": newvar})
-        #argList.append({"continuous": True, "influencers": 0})
+        #argList.append({"continuous": True, "influencers": 0, "skew": newvar})
+        argList.append({"continuous": True, "influencers": 0})
         #argList.append({"continuous": False, "type" : "grid", "influencers":0})
         #print("rand")
         titleList = ["clustered"]        
@@ -146,9 +149,11 @@ if __name__ ==  '__main__':
             #plt.draw()
             #print("Finished with ", titleList[i])
             #models.saveModels(sim, Path(pathData + filename + filenameList[i]).expanduser())
-            fname = './data/multiskew{}.csv'.format(newvar)
-            #fname = './data/states.csv'
+            #fname = './data/multiskew{}.csv'.format(newvar)
+            fname = './data/states{}.csv'.format(statevar)
+            print (fname)
             #fname = './data/runs.csv'
+            #fname = filename
             models.saveavgdata(sim, fname)
             #models.savesubdata(sim, fname)
         simtime= time.time()
