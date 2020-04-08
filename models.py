@@ -41,14 +41,14 @@ def getRandomExpo():
 
 STATES = [1, -1] #1 being cooperating, -1 being defecting
 defectorUtility = 0.0
-politicalClimate= 0.0135/2       # 0.0135 for equil 
+politicalClimate= 0.075       # 0.0135 for equil 
 newPoliticalClimate =politicalClimate 
-stubbornness = 0.7
+stubbornness = 0.8
 degree = 4 
-timesteps= 30000  #timesteps
+timesteps= 5000  #timesteps
 continuous = True
-skew = -0.25
-initSD = 0.15
+skew = -0.15
+initSD = 0.1
 mypalette = ["blue","red","green", "orange", "magenta","cyan","violet", "grey", "yellow"]
 randomness = 0.10
 gridtype = 'cl'
@@ -349,6 +349,9 @@ class Model:
 
 
         for i in range(timesteps):
+            
+            #if (i == 0) :
+            #    reduce_grid(self)
 
             #print("step: ", i)
             nodeIndex = self.interact()
@@ -382,16 +385,17 @@ class Model:
                 self.cooperatorDefectingNeighsList.append(cooperatorDefectingNeighs)
                 self.defectorDefectingNeighsSTDList.append(defectorDefectingNeighsSTD)
                 self.cooperatorDefectingNeighsSTDList.append(cooperatorDefectingNeighsSTD)
-            if(gifname != None and (i % 500 == 0)):
+            snapshots = [0,100,250,500,750,1000,2000,4000]
+            if(gifname != None and (i in snapshots)):
                 draw_model(self, True, i, extraTitle = f'  avg state: {self.states[-1]:1.2f} agreement: {self.avgNbAgreeingList[-1]:1.2f}')
                 filenames.append("plot" + str(i) +".png")
 
-        if(gifname != None):
-            images = []
-            for filename in filenames:
-                images.append(imageio.imread(filename))
-            #0.08167
-            imageio.mimsave("network" +gifname+ ".gif", images, duration=0.08167)
+        #if(gifname != None):
+        #    images = []
+        #    for filename in filenames:
+        #        images.append(imageio.imread(filename))
+        #    #0.08167
+        #    imageio.mimsave("network" +gifname+ ".gif", images, duration=0.08167)
 
         (avgs, sds, sizes) = findAvgStateInClusters(self, self.partition)
         self.clusteravg.append(avgs)
@@ -620,6 +624,38 @@ def savesubdata(models,filename):
 
 #-------- drawing functions ---------
 
+def reduce_grid(model):
+    n=12
+    for i in range(n):
+        for j in range(n):
+            if(i!=0 and j!=0 ):
+                model.graph.remove_edge(i*n+j, (i-1)*n+j-1)
+            if(i!=0 and j!=(n-1)):
+                model.graph.remove_edge(i*n+j, (i-1)*n+j+1)
+            """
+            if( i != n-1 and j!= n-1):
+                weight = model.getFriendshipWeight()
+                model.graph.remove_edge(i*n+j, (i+1)*n+j+1, weight = weight)
+            if(j != 0 and i != n-i):
+                weight = model.getFriendshipWeight()
+                model.graph.remove_edge(i*n+j, (i+1)*n+j-1, weight = weight)"""
+            if(j == n-1):
+                if(i == n-1):
+                    model.graph.remove_edge(i*n+j, 0)
+                else:
+                    model.graph.remove_edge(i*n+j, (i+1)*n)
+                if(i == 0):
+                    model.graph.remove_edge(i*n+j, (n-1)*n)
+                else:
+                    model.graph.remove_edge(i*n+j, (i-1)*n)
+            if( i == n-1):
+                if( j != n-1):
+                    model.graph.remove_edge(i*n+j, j+1)
+                if(j != 0):
+                    model.graph.remove_edge(i*n+j, j-1)
+                else: 
+                    model.graph.remove_edge(i*n+j, (n-1))
+
 def draw_model(model, save=True, filenumber = None, outline=None, partition=None, extraTitle=""):
     
     #plt.figure(figsize=(4, 4))
@@ -639,8 +675,8 @@ def draw_model(model, save=True, filenumber = None, outline=None, partition=None
             color_map.append((247/255,121/255,109/255, -1*model.graph.nodes[node]['agent'].state ))
             intensities.append(model.graph.nodes[node]['agent'].state)
     degrees = nx.degree(model.graph)
-    #plt.subplot(121)
-    nx.draw(model.graph, model.pos, node_size=[d[1] * 30 for d in degrees], linewidths=2, node_color =intensities, cmap=plt.cm.RdYlGn,  vmin=-1, vmax=1 )
+    #plt.subplot(121)i
+    nx.draw(model.graph, model.pos, node_size=[d[1] * 30 for d in degrees], linewidths=2, node_color =intensities, cmap=plt.cm.RdYlGn,  vmin=-1, vmax=1, edgelist = [])  # REMOVE EDGELIST for auto drawing edges
     #sm = plt.cm.ScalarMappable(cmap=plt.cm.RdYlGn, norm=plt.Normalize(vmin=-1, vmax=1))
     #sm.set_array([])
     #cbar = plt.colorbar(sm)

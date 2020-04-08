@@ -40,7 +40,7 @@ if __name__ ==  '__main__':
     plt.rcParams["svg.fonttype"] = "none"
 
     #Constants and Variables
-    numberOfSimulations =500 #10^3
+    numberOfSimulations =400 #10^3
     numberOfProcessors = 20 #Prosesser kan endres
 
     start = time.time()
@@ -95,7 +95,7 @@ if __name__ ==  '__main__':
     for run in range(runs-1):
         print("Started iteration: ", run)
         #newvar = grid[run]
-        statevar = modelargs['politicalClimate']
+        #statevar = modelargs['politicalClimate']
 
         #filename = f'sim2c-50s-4000-sw0_6-2opposing-zealots'
         #filename="./data/pol{}_skew{}_sd{}_random{}_tsteps{}_{}.csv".format(modelargs["newPoliticalClimate"],modelargs["skew"],modelargs["initSD"],modelargs["randomness"],modelargs["timesteps"],modelargs["type"])
@@ -119,8 +119,8 @@ if __name__ ==  '__main__':
         #argList.append({"continuous": True, "type" : "sf", "influencers":0})
         #argList.append({"continuous": False, "type" : "sf", "influencers":0})
         #argList.append({"continuous": True, "influencers": 0, "skew": newvar})
-        argList.append({"continuous": True, "influencers": 0})
-        #argList.append({"continuous": False, "type" : "grid", "influencers":0})
+        #argList.append({"continuous": True, "influencers": 0})
+        argList.append({"continuous": True, "type" : "grid", "influencers":0})
         #print("rand")
         titleList = ["clustered"]        
         filenameList = ["-cl"]
@@ -150,8 +150,8 @@ if __name__ ==  '__main__':
             #print("Finished with ", titleList[i])
             #models.saveModels(sim, Path(pathData + filename + filenameList[i]).expanduser())
             #fname = './data/multiskew{}.csv'.format(newvar)
-            fname = './data/states{}.csv'.format(statevar)
-            print (fname)
+            #fname = './data/states{}.csv'.format(statevar)
+            fname = './data/states.csv'
             #fname = './data/runs.csv'
             #fname = filename
             models.saveavgdata(sim, fname)
