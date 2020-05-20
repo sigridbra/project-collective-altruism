@@ -41,14 +41,14 @@ def getRandomExpo():
 
 STATES = [1, -1] #1 being cooperating, -1 being defecting
 defectorUtility = 0.0
-politicalClimate= 0.075       # 0.0135 for equil 
-newPoliticalClimate =politicalClimate 
-stubbornness = 0.8
+politicalClimate= 0.0135       # 0.0135 for equil 
+newPoliticalClimate = 0.5*politicalClimate
+stubbornness = 0.7
 degree = 4 
-timesteps= 5000  #timesteps
+timesteps= 15000  #timesteps
 continuous = True
-skew = -0.15
-initSD = 0.1
+skew = -0.25
+initSD = 0.15
 mypalette = ["blue","red","green", "orange", "magenta","cyan","violet", "grey", "yellow"]
 randomness = 0.10
 gridtype = 'cl'
@@ -366,7 +366,7 @@ class Model:
             self.avgNbAgreeingList.append(avgFriends)
 
             global args
-            if(i == 500 and (args["newPoliticalClimate"] != args["politicalClimate"])):
+            if(i == 1500 and (args["newPoliticalClimate"] != args["politicalClimate"])):
                 self.politicalClimate = args["newPoliticalClimate"]
 
 

@@ -9,30 +9,30 @@ import matplotlib.ticker as ticker
 
 ### Varying one variable
 
-multinitfilelist1 = sorted(glob.glob('./data/multiskew-*'))
-multinitfilelist2 = sorted(glob.glob('./data/multiskew0*')) ## really ugly hack because it's quicker than finding out the correct way, and I need to finish up my PhD on time (don't make this into a habbit!)
-
-multinitraw = []
-
-for f in multinitfilelist1 :
-    multinitraw.append(np.loadtxt(f,usecols=[0],delimiter=',',skiprows=1))
-multinitraw.reverse()
-for f in multinitfilelist2 :
-    multinitraw.append(np.loadtxt(f,usecols=[0],delimiter=',',skiprows=1))
-
-multinitavg = np.array(multinitraw)         ## ROW MATRIX
-
-figmultinit, ax = plt.subplots()
-for line in multinitavg : 
-    ax.plot(line,color='#ff7f0e')
-    ax.set(xlabel='timestep',ylabel='$\\langle$ state $\\rangle$')
-    ax.set_ylim([-1,1])
-    
-figmultinit.savefig('multipol.png')
+#multinitfilelist1 = sorted(glob.glob('./data/multiskew-*'))
+#multinitfilelist2 = sorted(glob.glob('./data/multiskew0*')) ## really ugly hack because it's quicker than finding out the correct way, and I need to finish up my PhD on time (don't make this into a habbit!)
+#
+#multinitraw = []
+#
+#for f in multinitfilelist1 :
+#    multinitraw.append(np.loadtxt(f,usecols=[0],delimiter=',',skiprows=1))
+#multinitraw.reverse()
+#for f in multinitfilelist2 :
+#    multinitraw.append(np.loadtxt(f,usecols=[0],delimiter=',',skiprows=1))
+#
+#multinitavg = np.array(multinitraw)         ## ROW MATRIX
+#
+#figmultinit, ax = plt.subplots()
+#for line in multinitavg : 
+#    ax.plot(line,color='#ff7f0e')
+#    ax.set(xlabel='timestep',ylabel='$\\langle$ state $\\rangle$')
+#    ax.set_ylim([-1,1])
+#    
+#figmultinit.savefig('multipol.png')
 
 ### Standard plot
 
-statesraw = np.loadtxt(open('./data/equil/states_equil.csv',"rb"),delimiter=',',skiprows=1)
+statesraw = np.loadtxt(open('./data/states.csv',"rb"),delimiter=',',skiprows=1)
 
 statesavg = statesraw[:,0]
 statesstd = statesraw[:,1]
@@ -146,29 +146,31 @@ figstates.savefig('states.png')
 #
 #### multipol
 #
-#statesraw1 = np.loadtxt(open('./data/states0.027.csv',"rb"),delimiter=',',skiprows=1)
-#statesraw2 = np.loadtxt(open('./data/states0.0135.csv',"rb"),delimiter=',',skiprows=1)
-#statesraw3 = np.loadtxt(open('./data/states0.00675.csv',"rb"),delimiter=',',skiprows=1)
-#
-#statesavg1 = statesraw1[:,0]
-#statesavg2 = statesraw2[:,0]
-#statesavg3 = statesraw3[:,0]
-#
-#figstates, ax =  plt.subplots()
-#f1 = ax.plot(statesavg1, color='#ff7f0e', label="top: $\\phi = 0.027$")
-#f2 = ax.plot(statesavg2, color='#ff7f0e', label="mid: $\\phi = 0.0135$")
-#f3 = ax.plot(statesavg3, color='#ff7f0e', label="bot: $\\phi = 0.00675$")
-#ax.set(xlabel='timestep',ylabel='$\\langle$ state $\\rangle$')
-#ax.legend(loc = 'lower right')
-##ax.yaxis.set_major_locator(ticker.MultipleLocator(0.25))
-##ax.yaxis.set_minor_locator(ticker.MultipleLocator(0.05))
-##ax.yaxis.set_major_locator(ticker.MultipleLocator(6000))
-##ax.xaxis.set_major_locator(ticker.MultipleLocator(2000))
-#ax.xaxis.grid(True, linestyle='dotted')
-#ax.yaxis.grid(True, linestyle='dotted')
-#ax.set_ylim([-1,1])
-#
-#figstates.savefig('multipol.png')
+statesraw1 = np.loadtxt(open('./data/stateshigh.csv',"rb"),delimiter=',',skiprows=1)
+statesraw2 = np.loadtxt(open('./data/statesmid.csv',"rb"),delimiter=',',skiprows=1)
+statesraw3 = np.loadtxt(open('./data/states.csv',"rb"),delimiter=',',skiprows=1)
+
+statesavg1 = statesraw1[:,0]
+statesavg2 = statesraw2[:,0]
+statesavg3 = statesraw3[:,0]
+
+figstates, ax =  plt.subplots()
+f1 = ax.plot(statesavg1, color='#ff7f0e', label="top: $\\phi = 0.027$")
+f2 = ax.plot(statesavg2, color='#ff7f0e', label="mid: $\\phi = 0.0135$")
+f3 = ax.plot(statesavg3, color='#ff7f0e', label="bot: $\\phi = 0.00675$")
+ax.set(xlabel='timestep',ylabel='$\\langle$ state $\\rangle$')
+ax.legend(loc = 'lower right')
+#ax.yaxis.set_major_locator(ticker.MultipleLocator(0.25))
+#ax.yaxis.set_minor_locator(ticker.MultipleLocator(0.05))
+#ax.yaxis.set_major_locator(ticker.MultipleLocator(6000))
+#ax.xaxis.set_major_locator(ticker.MultipleLocator(2000))
+ax.xaxis.grid(True, linestyle='dotted')
+ax.yaxis.grid(True, linestyle='dotted')
+ax.set_ylim([-1,1])
+
+figstates.savefig('multipol.png')
+
+### multiinit
 
 #figmultinitcolors, ax = plt.subplots()
 #
